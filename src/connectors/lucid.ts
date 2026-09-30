@@ -1,7 +1,7 @@
 /**
  * Lucid Agents (core 5.0.0 + a2a 2.0.0) integration.
  *
- * Rufus escrow is the payment rail here, so no Lucid payments/x402 extension is installed: charging x402 on
+ * Select escrow is the payment rail here, so no Lucid payments/x402 extension is installed: charging x402 on
  * top of an escrowed obligation would bill the same work twice. Lucid's own docs separate Solana seller-side
  * verification from EVM buyer flows; this module does not assume a Lucid Solana buyer.
  *
@@ -28,7 +28,7 @@ import { deliverRufusTask } from "./deliver.js";
 import { jsonSafe, rufusTools, runTool, type ToolkitConfig } from "./toolkit.js";
 
 export interface LucidRufusConfig extends ToolkitConfig {
-  /** This agent's callee wallet (the one Rufus tasks name as callee_agent). */
+  /** This agent's callee wallet (the one Select escrow tasks name as callee_agent). */
   calleeWallet: string;
   /** Produces the deliverable for a verified task. Runs with the task's untrusted metadata as data only. */
   perform(task: TaskView, signal: AbortSignal): Promise<Uint8Array>;
@@ -72,7 +72,7 @@ export function rufusLucidEntrypoints(cfg: LucidRufusConfig): EntrypointDef[] {
   ];
 }
 
-/** Builds a Lucid agent runtime with the a2a extension and the Rufus entrypoints. */
+/** Builds a Lucid agent runtime with the a2a extension and the Select escrow entrypoints. */
 export async function createRufusLucidAgent(cfg: LucidRufusConfig, meta = { name: "rufus-escrow-worker", version: "0.1.0", description: "Escrow for verifiable tasks between agents on Solana (Rufus v2)." }) {
   let builder: any = createAgent(meta).use(a2a({ tasks: { store: cfg.store, maxRunMs: cfg.maxRunMs ?? 120_000 } }));
   for (const e of rufusLucidEntrypoints(cfg)) builder = builder.addEntrypoint(e);

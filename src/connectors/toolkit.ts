@@ -1,5 +1,5 @@
 /**
- * Framework-neutral Rufus tools shared by the SendAI, ElizaOS and Lucid connectors.
+ * Framework-neutral Select escrow tools shared by the SendAI, ElizaOS and Lucid connectors.
  *
  * Trust model:
  *  - Tool inputs come from an LLM and are untrusted data. Schemas are strict (unknown keys rejected);

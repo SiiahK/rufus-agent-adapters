@@ -1,7 +1,7 @@
 /**
  * Core behavior without a network: fee math (the on-chain formula), amount parsing, preview digest,
  * spend policy and authorization binding. Fee values were also checked against the deployed program
- * in the Rufus monorepo (LiteSVM replay of the approved binary).
+ * in the main Select repository (LiteSVM replay of the approved binary).
  */
 import { describe, it, expect } from "vitest";
 import { Keypair } from "@solana/web3.js";

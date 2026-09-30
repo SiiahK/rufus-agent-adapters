@@ -1,5 +1,5 @@
 /**
- * Rufus v2 escrow protocol constants, PDAs, decoders and instruction builders.
+ * Select v2 Escrow protocol constants, PDAs, decoders and instruction builders.
  *
  * Mirrors src/solana/v2-settlement.ts and scripts/v2-pilot.ts (the code paths used on mainnet);
  * tests/gtm/protocol-parity.test.ts fails if the two drift. Nothing here changes on-chain rules.

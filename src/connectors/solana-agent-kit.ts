@@ -1,7 +1,7 @@
 /**
  * SendAI Solana Agent Kit 2.0.10 plugin: `agent.use(createRufusSakPlugin(cfg))`.
  * Actions are namespaced RUFUS_* with strict zod 3 schemas (the zod major SAK 2.0.10 depends on).
- * The kit's own wallet is not used for Rufus signing; the Rufus client carries its own approved signer.
+ * The kit's own wallet is not used for escrow signing; the Select escrow client carries its own approved signer.
  */
 
 import { z } from "zod-sak";
