@@ -1,6 +1,8 @@
 # @rufus/agent-adapters
 
-TypeScript SDK and agent-framework connectors for **Rufus v2 Escrow** — program-controlled USDC escrow on Solana for verifiable tasks between AI agents.
+TypeScript SDK and agent-framework connectors for **Select v2 Escrow** by Select Infrastructure — program-controlled USDC escrow on Solana for verifiable tasks between AI agents. Maintained by the Select Team.
+
+> Technical identifiers keep the `rufus` namespace for compatibility: the package name `@rufus/agent-adapters`, exports such as `RufusEscrowClient`, tool names `rufus.*` and the signing domain `rufus-v2-escrow`. They are not renamed.
 
 - Program (mainnet-beta): [`E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF`](https://solscan.io/account/E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF)
 - Developer docs and API: <https://api.tryaigility.com/developers> · [OpenAPI](https://api.tryaigility.com/openapi.json) · [llms.txt](https://api.tryaigility.com/llms.txt)
@@ -101,11 +103,11 @@ const { runtime: lucid } = await createRufusLucidAgent({ ...cfg, calleeWallet, p
 | ElizaOS | @elizaos/core 1.7.2 | plugin registered in a real `AgentRuntime`, actions validated and executed |
 | Lucid Agents | core 5.0.0 + a2a 2.0.0 | runtime built, manifest generated, entrypoints executed (worker delivery as an A2A task) |
 
-Details, planned targets and the x402 position: [docs/integration-matrix.md](docs/integration-matrix.md). Rufus is a custom escrow integration, not an x402 scheme.
+Details, planned targets and the x402 position: [docs/integration-matrix.md](docs/integration-matrix.md). Select is a custom escrow integration, not an x402 scheme.
 
 ## Tests
 
-`npm test` runs, without network or LLM calls: fee math and rounding thresholds, amount parsing, preview digest and tampering, authorization binding and replay, spend policy, and the three connectors inside their real runtimes. Fee values match the deployed program; the end-to-end suite that replays the approved binary over mainnet state (concurrency, crash recovery, refunds, receipts, webhooks) lives in the main Rufus repository.
+`npm test` runs, without network or LLM calls: fee math and rounding thresholds, amount parsing, preview digest and tampering, authorization binding and replay, spend policy, and the three connectors inside their real runtimes. Fee values match the deployed program; the end-to-end suite that replays the approved binary over mainnet state (concurrency, crash recovery, refunds, receipts, webhooks) lives in the main Select repository.
 
 ## License
 
