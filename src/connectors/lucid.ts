@@ -48,12 +48,12 @@ export function rufusLucidEntrypoints(cfg: LucidRufusConfig): EntrypointDef[] {
     handler: async (ctx) => ({ output: await runTool(tools[tool], z, ctx.input) }),
   });
   return [
-    readOnly("rufus-preview", "rufus.preview_task", "Preview a Rufus escrow task: fee at creation, net to worker, rent, deadline and refund rules."),
+    readOnly("rufus-preview", "rufus.preview_task", "Preview a Select escrow task: fee at creation, net to worker, rent, deadline and refund rules."),
     readOnly("rufus-task-status", "rufus.get_task", "On-chain task state and reconciliation state, separately."),
     readOnly("rufus-receipt", "rufus.get_receipt", "Receipt for a task; final only with a finalized settle/refund transaction."),
     {
       key: "rufus-deliver",
-      description: "Worker side: deliver the committed artifact for a funded Rufus task that names this agent as callee. Returns an A2A task handle.",
+      description: "Worker side: deliver the committed artifact for a funded Select escrow task that names this agent as callee. Returns an A2A task handle.",
       input: z.object({ task: TASK }).strict() as any,
       output: z.record(z.string(), z.unknown()) as any,
       metadata: { rufus: { role: "callee", async: true } },
@@ -73,7 +73,7 @@ export function rufusLucidEntrypoints(cfg: LucidRufusConfig): EntrypointDef[] {
 }
 
 /** Builds a Lucid agent runtime with the a2a extension and the Select escrow entrypoints. */
-export async function createRufusLucidAgent(cfg: LucidRufusConfig, meta = { name: "rufus-escrow-worker", version: "0.1.0", description: "Escrow for verifiable tasks between agents on Solana (Rufus v2)." }) {
+export async function createRufusLucidAgent(cfg: LucidRufusConfig, meta = { name: "rufus-escrow-worker", version: "0.1.0", description: "Escrow for verifiable tasks between agents on Solana (Select v2 Escrow)." }) {
   let builder: any = createAgent(meta).use(a2a({ tasks: { store: cfg.store, maxRunMs: cfg.maxRunMs ?? 120_000 } }));
   for (const e of rufusLucidEntrypoints(cfg)) builder = builder.addEntrypoint(e);
   const runtime = await builder.build();

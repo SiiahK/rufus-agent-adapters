@@ -37,7 +37,7 @@ export function createRufusElizaPlugin(cfg: ElizaRufusConfig): Plugin {
       structuredInput(message) !== undefined && (!t.financial || operators.has(String(message.entityId))),
     handler: async (_runtime: IAgentRuntime, message: Memory, _state?: unknown, options?: Record<string, unknown>, callback?: (c: any) => Promise<Memory[]>): Promise<ActionResult> => {
       if (t.financial && !operators.has(String(message.entityId))) {
-        return { success: false, error: "not_operator", text: "Only a configured operator can trigger Rufus financial actions." };
+        return { success: false, error: "not_operator", text: "Only a configured operator can trigger Select escrow financial actions." };
       }
       const input = structuredInput(message, options);
       if (input === undefined) return { success: false, error: "structured_input_required", text: "Provide content.rufus with the tool input." };
@@ -50,9 +50,9 @@ export function createRufusElizaPlugin(cfg: ElizaRufusConfig): Plugin {
 
   const policyProvider: Provider = {
     name: "RUFUS_POLICY",
-    description: "Rufus escrow spend policy summary (read-only, host-defined).",
+    description: "Select escrow spend policy summary (read-only, host-defined).",
     get: async () => ({
-      text: `Rufus escrow on ${cfg.cluster}: tenant ${cfg.tenant}, payer ${cfg.wallet}. Financial actions require operator approval outside the chat.`,
+      text: `Select escrow on ${cfg.cluster}: tenant ${cfg.tenant}, payer ${cfg.wallet}. Financial actions require operator approval outside the chat.`,
       values: { rufusCluster: cfg.cluster, rufusTenant: cfg.tenant },
       data: { financialTools: tools.filter((t) => t.financial).map((t) => t.name), readOnlyTools: tools.filter((t) => !t.financial).map((t) => t.name) },
     }),
@@ -60,7 +60,7 @@ export function createRufusElizaPlugin(cfg: ElizaRufusConfig): Plugin {
 
   return {
     name: "plugin-rufus-escrow",
-    description: "Escrow for verifiable tasks between agents on Solana (Rufus v2).",
+    description: "Escrow for verifiable tasks between agents on Solana (Select v2 Escrow).",
     actions,
     providers: [policyProvider],
   };

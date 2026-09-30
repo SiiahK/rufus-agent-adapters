@@ -68,7 +68,7 @@ export function rufusTools(cfg: ToolkitConfig): RufusToolDef[] {
   const defs: Omit<RufusToolDef, "financial">[] = [
     {
       name: "rufus.preview_task",
-      description: "Rufus escrow: preview an escrowed task (fee charged at creation, net to the worker, rent, deadline, refund and evidence rules). Read-only; signs nothing.",
+      description: "Select escrow: preview an escrowed task (fee charged at creation, net to the worker, rent, deadline, refund and evidence rules). Read-only; signs nothing.",
       schema: (z) => z.object({
         callee: TASK(z),
         mint: z.enum(Object.keys(SETTLEABLE_MINTS) as [string, ...string[]]),
@@ -92,7 +92,7 @@ export function rufusTools(cfg: ToolkitConfig): RufusToolDef[] {
     },
     {
       name: "rufus.create_task",
-      description: "Rufus escrow: create and fund the task from a previous preview (by digest). Requires principal approval outside the agent.",
+      description: "Select escrow: create and fund the task from a previous preview (by digest). Requires principal approval outside the agent.",
       schema: (z) => z.object({ previewDigest: z.string().regex(/^[0-9a-f]{64}$/) }).strict(),
       async run(i) {
         const p = previews.get(i.previewDigest);
@@ -104,19 +104,19 @@ export function rufusTools(cfg: ToolkitConfig): RufusToolDef[] {
     },
     {
       name: "rufus.get_task",
-      description: "Rufus escrow: on-chain task state and local reconciliation state (reported separately). Read-only.",
+      description: "Select escrow: on-chain task state and local reconciliation state (reported separately). Read-only.",
       schema: (z) => z.object({ task: TASK(z) }).strict(),
       run: async (i) => ({ ok: true, result: jsonSafe(await cfg.client.getTask(i.task)) }),
     },
     {
       name: "rufus.get_receipt",
-      description: "Rufus escrow: receipt for a task; final only when backed by a finalized settle/refund transaction. Read-only.",
+      description: "Select escrow: receipt for a task; final only when backed by a finalized settle/refund transaction. Read-only.",
       schema: (z) => z.object({ task: TASK(z) }).strict(),
       run: async (i) => ({ ok: true, result: jsonSafe(await cfg.client.getReceipt(i.task)) }),
     },
     {
       name: "rufus.request_refund",
-      description: "Rufus escrow: request a refund as payer or callee (signed request before the deadline; payer-direct refund after it). The creation fee is not refunded. Requires principal approval.",
+      description: "Select escrow: request a refund as payer or callee (signed request before the deadline; payer-direct refund after it). The creation fee is not refunded. Requires principal approval.",
       schema: (z) => z.object({ task: TASK(z) }).strict(),
       async run(i) {
         const a = await cfg.authorize({ action: "request_refund", wallet: cfg.wallet, tenant: cfg.tenant, task: i.task });
@@ -126,7 +126,7 @@ export function rufusTools(cfg: ToolkitConfig): RufusToolDef[] {
     },
     {
       name: "rufus.submit_evidence",
-      description: "Rufus escrow: as the payer, sign the release approval for a payer-approval task and send it to the settlement worker. Requires principal approval.",
+      description: "Select escrow: as the payer, sign the release approval for a payer-approval task and send it to the settlement worker. Requires principal approval.",
       schema: (z) => z.object({ task: TASK(z) }).strict(),
       async run(i) {
         const a = await cfg.authorize({ action: "submit_evidence", wallet: cfg.wallet, tenant: cfg.tenant, task: i.task });
