@@ -1,6 +1,6 @@
 {
   "name": "@rufus/agent-adapters",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Select v2 Escrow (Select Infrastructure) adapters for AI agent frameworks on Solana: cost preview, spend policy, signed authorizations, receipts; connectors for Solana Agent Kit, ElizaOS and Lucid Agents",
   "type": "module",

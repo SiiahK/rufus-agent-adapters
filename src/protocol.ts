@@ -26,6 +26,20 @@ export const SETTLEABLE_MINTS: Record<string, { symbol: string; decimals: number
 export const BPS_DENOMINATOR = 10_000n;
 export const AFFILIATE_SHARE_OF_FEE_BPS = 2_500n;
 export const DEFAULT_DOMAIN = "m2m";
+/**
+ * Routing domain with the higher 24h volume cap (35 000 USDC per shard window), created on mainnet by the Squads
+ * multisig on 2026-10-01. New tasks use it by default; tasks on "m2m" keep working (settlement reads the domain
+ * stored in each task).
+ */
+export const PAYMENTS_V2_DOMAIN = "payments_v2";
+const DOMAIN_RE = /^[a-z0-9_]{1,16}$/;
+
+/** Host choice: explicit option, else RUFUS_ROUTING_DOMAIN, else payments_v2. */
+export function resolveRoutingDomain(explicit?: string | null, env: Record<string, string | undefined> = process.env): string {
+  const d = explicit ?? env.RUFUS_ROUTING_DOMAIN?.trim() ?? PAYMENTS_V2_DOMAIN;
+  if (!DOMAIN_RE.test(d)) throw new Error("routing domain must match [a-z0-9_]{1,16}");
+  return d;
+}
 
 /** Rent-exempt minimums observed on mainnet (finalized read, slot 451162698). */
 export const RENT_LAMPORTS = { task: 2_560_320n, escrow: 1_488_440n, tombstone: 1_183_640n } as const;

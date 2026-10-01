@@ -88,3 +88,20 @@ describe("escrow-402 (custom handshake, not x402)", () => {
     expect(await used.claim("t")).toBe(false);
   });
 });
+
+describe("routing domain", () => {
+  it("defaults to payments_v2 (bound into the preview); RUFUS_ROUTING_DOMAIN overrides; an unknown domain blocks the preview", async () => {
+    const saved = process.env.RUFUS_ROUTING_DOMAIN;
+    try {
+      delete process.env.RUFUS_ROUTING_DOMAIN;
+      expect(A.resolveRoutingDomain()).toBe("payments_v2");
+      process.env.RUFUS_ROUTING_DOMAIN = "m2m";
+      expect(A.resolveRoutingDomain()).toBe("m2m");
+    } finally { if (saved === undefined) delete process.env.RUFUS_ROUTING_DOMAIN; else process.env.RUFUS_ROUTING_DOMAIN = saved; }
+    const base = { cluster: "localnet" as const, tenant: "acme", payer: Keypair.generate().publicKey.toBase58(), callee: Keypair.generate().publicKey.toBase58(), mint: USDC.toBase58(), amount: "1", amountBasis: "gross" as const, deadlineSecs: 3600, verification: { type: "payer_approval" as const }, idempotencyKey: "d-1" };
+    const pv = await A.previewTask({ ...base, domain: "payments_v2" }, mockChain());
+    expect(pv.binding.domain).toBe("payments_v2");
+    expect((await A.previewTask(base, mockChain())).binding.domain).toBeUndefined();     // m2m keeps its old digest shape
+    expect((await A.previewTask({ ...base, domain: "nope" }, mockChain())).blocking.join()).toMatch(/not initialized/);
+  });
+});

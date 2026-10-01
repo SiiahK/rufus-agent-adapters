@@ -1,7 +1,7 @@
 /** In-memory ChainReader with a ProtocolConfig laid out exactly like the deployed account (no network). */
 import { Keypair, PublicKey } from "@solana/web3.js";
 import {
-  CONFIG_DISCRIMINATOR, PROGRAM_ID, TREASURY_AUTHORITY, USDC_MINT, configPda, loadPolicy, memoryBudgetTracker, memoryNonceStore,
+  CONFIG_DISCRIMINATOR, PROGRAM_ID, TREASURY_AUTHORITY, USDC_MINT, configPda, loadPolicy, memoryBudgetTracker, memoryNonceStore, routingPda,
   RufusEscrowClient, type ChainReader, type AgentSpendPolicy,
 } from "../src/index.js";
 
@@ -22,7 +22,9 @@ export function protocolConfig(feeBps = 200, paused = false, executors: PublicKe
 }
 
 export function mockChain(feeBps = 200, opts: { paused?: boolean } = {}): ChainReader & { now_: number } {
-  const accounts = new Map<string, Buffer>([[configPda().toBase58(), protocolConfig(feeBps, opts.paused)]]);
+  // Routing domains that exist on mainnet (m2m and payments_v2); the preview checks that the chosen one exists.
+  const accounts = new Map<string, Buffer>([[configPda().toBase58(), protocolConfig(feeBps, opts.paused)],
+    [routingPda("m2m").toBase58(), Buffer.alloc(110)], [routingPda("payments_v2").toBase58(), Buffer.alloc(110)]]);
   const chain = {
     now_: NOW,
     getAccount: async (a: PublicKey) => {

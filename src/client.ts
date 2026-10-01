@@ -25,7 +25,7 @@ import { checkSpend, type AgentSpendPolicy, type BudgetTracker, type Cluster } f
 import { bindingDigest, clientOperationId, previewTask, type PreviewInput, type TaskPreview, type WorkerPolicy } from "./preview.js";
 import {
   PROGRAM_ID, TaskStatus, VerificationType, approvalMessage, ata, buildCreateTaskIx, buildPayerRefundIx, buildRegisterIntegratorIx,
-  configPda, decodeProtocolConfig, decodeTask, decodeTombstone, integratorPda, taskPda, USDC_MINT, type TaskView, type TombstoneView,
+  configPda, decodeProtocolConfig, decodeTask, decodeTombstone, integratorPda, resolveRoutingDomain, taskPda, USDC_MINT, DEFAULT_DOMAIN, type TaskView, type TombstoneView,
 } from "./protocol.js";
 
 /** Host-side approval for the unified helpers (same contract as the connectors' authorize callback). */
@@ -72,13 +72,18 @@ export interface ClientOptions {
   affiliate?: string | null;
   /** Tenant used by the unified helpers (default "default"). */
   tenant?: string;
+  /** Routing domain for new tasks. undefined → RUFUS_ROUTING_DOMAIN, else "payments_v2". It is bound into the preview digest. */
+  domain?: string;
 }
 
 export class RufusEscrowClient {
   private readonly journal: OperationJournal;
   /** Affiliate chosen by the host (option or environment); validated on-chain at each creation. */
   readonly affiliate: string | null;
+  /** Routing domain used for new tasks. */
+  readonly domain: string;
   constructor(private readonly o: ClientOptions) {
+    this.domain = resolveRoutingDomain(o.domain);
     this.journal = o.journal ?? memoryJournal();
     Object.freeze(this.o.policy);
     this.affiliate = o.affiliate === undefined ? affiliateFromEnv() : o.affiliate === null ? null : new PublicKey(o.affiliate).toBase58();
@@ -100,7 +105,7 @@ export class RufusEscrowClient {
   /** Read-only. */
   async previewTask(input: PreviewInput): Promise<TaskPreview> {
     checkSpend(this.o.policy, { tool: "rufus.preview_task", cluster: input.cluster, mint: input.mint, callee: input.callee, grossRaw: 0n, deadlineSecsFromNow: input.deadlineSecs }, 0n);
-    return previewTask(input, this.o.chain, { workerPolicy: await this.workerPolicy() });
+    return previewTask({ ...input, domain: input.domain ?? this.domain }, this.o.chain, { workerPolicy: await this.workerPolicy() });
   }
 
   async createTask(preview: TaskPreview, authorization: SpendAuthorization, opts: { affiliate?: string | null } = {}): Promise<{ task: string; state: ReconciliationState | "already_exists"; signature?: string; commission?: AffiliateRoute }> {
@@ -369,7 +374,7 @@ export async function buildCreateInstructions(chain: ChainReader, preview: TaskP
     payer, callee: new PublicKey(b.callee), mint, grossAmount: BigInt(b.grossRaw), deadline: BigInt(b.deadline),
     clientOperationId: Buffer.from(b.clientOperationId, "hex"), verificationType: b.verificationType,
     verificationData: Buffer.from(b.verificationData, "hex"), integratorConfig,
-    treasuryTokenAccount: ata(treasuryAuthority, mint), affiliateTokenAccount,
+    treasuryTokenAccount: ata(treasuryAuthority, mint), affiliateTokenAccount, domain: b.domain ?? DEFAULT_DOMAIN,
   }));
   return { ixs, route };
 }

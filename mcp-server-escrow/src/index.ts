@@ -53,7 +53,7 @@ async function main() {
   const d: EscrowToolDeps = {
     chain: connectionReader(conn), cluster: (process.env.RUFUS_CLUSTER as EscrowToolDeps["cluster"]) ?? "mainnet-beta",
     latestBlockhash: () => conn.getLatestBlockhash("confirmed"), affiliate: affiliateFromEnv(process.env), maxGrossRaw: BigInt(max),
-    evidenceBaseUrl: process.env.RUFUS_EVIDENCE_URL ?? "https://api.tryaigility.com",
+    evidenceBaseUrl: process.env.RUFUS_EVIDENCE_URL ?? "https://api.tryaigility.com", domain: process.env.RUFUS_ROUTING_DOMAIN,
     subscribe: async (account, onChange) => { const id = conn.onAccountChange(account, onChange, { commitment: "confirmed" }); return () => conn.removeAccountChangeListener(id); },
   };
   await buildServer(d).connect(new StdioServerTransport());

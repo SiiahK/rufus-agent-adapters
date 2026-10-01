@@ -9,8 +9,8 @@ import { computeFee, feeThresholds, formatAmount, grossUpForNet, parseAmount, U6
 import type { ChainReader } from "./chain.js";
 import { sortKeys, type Cluster } from "./policy.js";
 import {
-  PROGRAM_ID, RENT_LAMPORTS, SETTLEABLE_MINTS, VerificationType, ata, configPda, decodeProtocolConfig,
-  integratorPda, riskBudgetPda, taskPda, TREASURY_AUTHORITY,
+  DEFAULT_DOMAIN, PROGRAM_ID, RENT_LAMPORTS, SETTLEABLE_MINTS, VerificationType, ata, configPda, decodeProtocolConfig,
+  integratorPda, riskBudgetPda, routingPda, taskPda, TREASURY_AUTHORITY,
 } from "./protocol.js";
 
 export const PREVIEW_VERSION = "rufus.preview.v1";
@@ -31,6 +31,8 @@ export interface PreviewInput {
   verification: { type: "payer_approval" } | { type: "artifact_hash"; sha256: string };
   /** Stable economic identity chosen by the caller (1–128 chars). Same key → same task address → no second charge. */
   idempotencyKey: string;
+  /** Routing domain (default "m2m" for this pure function; the client and servers pass their configured domain). */
+  domain?: string;
   priorityFeeMicroLamports?: number;
   computeUnitLimit?: number;
 }
@@ -44,6 +46,8 @@ export interface TaskPreview {
     grossRaw: string; deadline: number; verificationType: VerificationType; verificationData: string;
     clientOperationId: string; task: string; feeBps: string; computeUnitLimit: number; priorityFeeMicroLamports: number;
     integratorRegistrationRequired: boolean;
+    /** Present only for a non-default routing domain (keeps digests of "m2m" previews unchanged). */
+    domain?: string;
   };
   display: {
     symbol: string; decimals: number;
@@ -106,6 +110,8 @@ export async function previewTask(input: PreviewInput, chain: ChainReader, opts:
     vType = VerificationType.ArtifactHash; vData = Buffer.from(input.verification.sha256, "hex");
   } else throw new PreviewError("invalid_input", "verification must be payer_approval or artifact_hash with a 64-hex sha256");
 
+  const domain = input.domain ?? DEFAULT_DOMAIN;
+  if (!/^[a-z0-9_]{1,16}$/.test(domain)) throw new PreviewError("invalid_input", "domain must match [a-z0-9_]{1,16}");
   const cfgAcct = await chain.getAccount(configPda());
   if (!cfgAcct || !cfgAcct.owner.equals(PROGRAM_ID)) throw new PreviewError("config_unavailable", "ProtocolConfig not readable");
   const cfg = decodeProtocolConfig(cfgAcct.data);
@@ -136,7 +142,9 @@ export async function previewTask(input: PreviewInput, chain: ChainReader, opts:
       blocking.push(`gross ${gross} exceeds the settlement worker pilot cap ${wp.maxGrossAmountRaw}: the task would be refunded and the fee kept`);
     }
   } else warnings.push("settlement worker policy not checked (GET /health unavailable)");
-  const rb = await chain.getAccount(riskBudgetPda());
+  const routing = await chain.getAccount(routingPda(domain));
+  if (!routing || !routing.owner.equals(PROGRAM_ID)) blocking.push(`routing domain "${domain}" is not initialized on this cluster: create_task_v2 would fail`);
+  const rb = await chain.getAccount(riskBudgetPda(domain));
   if (rb) {
     const u128 = (o: number) => rb.data.readBigUInt64LE(o) + (rb.data.readBigUInt64LE(o + 8) << 64n);
     const start = rb.data.readBigInt64LE(84), dur = rb.data.readBigInt64LE(92);
@@ -151,6 +159,7 @@ export async function previewTask(input: PreviewInput, chain: ChainReader, opts:
     verificationData: vData.toString("hex"), clientOperationId: opId.toString("hex"), task: task.toBase58(),
     feeBps: cfg.protocolFeeBps.toString(), computeUnitLimit: cu, priorityFeeMicroLamports: prio,
     integratorRegistrationRequired: integratorMissing,
+    ...(domain !== DEFAULT_DOMAIN ? { domain } : {}),
   };
   const f = (r: bigint) => formatAmount(r, meta.decimals);
   const expiresAt = now + PREVIEW_TTL_SECS;

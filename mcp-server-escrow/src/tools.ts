@@ -10,7 +10,7 @@
 
 import {
   web3, PROGRAM_ID, TaskStatus, VerificationType, approvalMessage, ata, buildCreateInstructions, buildPayerRefundIx, configPda,
-  decodeProtocolConfig, decodeTask, formatAmount, previewTask, SETTLEABLE_MINTS, USDC_MINT, type ChainReader,
+  decodeProtocolConfig, decodeTask, formatAmount, previewTask, resolveRoutingDomain, SETTLEABLE_MINTS, USDC_MINT, type ChainReader,
 } from "../../src/core.js";
 
 const { PublicKey, Transaction, ComputeBudgetProgram } = web3;
@@ -26,6 +26,8 @@ export interface EscrowToolDeps {
   /** Evidence intake of the settlement worker, e.g. https://api.tryaigility.com */
   evidenceBaseUrl: string;
   /** Account-change subscription (websocket); falls back to polling when absent. */
+  /** Routing domain for new tasks (RUFUS_ROUTING_DOMAIN, else payments_v2). */
+  domain?: string;
   subscribe?(account: InstanceType<typeof PublicKey>, onChange: () => void): Promise<() => Promise<void> | void>;
   pollMs?: number;
 }
@@ -46,7 +48,7 @@ export async function createEscrowTask(d: EscrowToolDeps, i: { payer: string; pr
   if (!meta) throw new ToolError("invalid_input", "mint is not settleable");
   const preview = await previewTask({
     cluster: d.cluster, tenant: i.tenant ?? "mcp", payer: payer.toBase58(), callee: i.providerPubkey, mint, amount: formatAmount(gross, meta.decimals), amountBasis: "gross",
-    deadlineSecs: i.timeoutSeconds, verification: { type: "payer_approval" }, idempotencyKey: i.taskId,
+    deadlineSecs: i.timeoutSeconds, verification: { type: "payer_approval" }, idempotencyKey: i.taskId, domain: resolveRoutingDomain(d.domain),
   }, d.chain);
   if (preview.blocking.length) throw new ToolError("preview_blocked", preview.blocking.join("; "));
   const cfg = decodeProtocolConfig((await d.chain.getAccount(configPda()))!.data);

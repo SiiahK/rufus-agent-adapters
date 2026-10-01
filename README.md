@@ -116,6 +116,10 @@ await client.refundTaskEscrow({ taskId: "job-42", authorize });                 
 
 The same `taskId` always maps to the same task address, so a retry cannot charge a second fee.
 
+## Routing domain (0.3.0)
+
+New tasks use the routing domain **`payments_v2`** by default. It was created on mainnet on 2026-10-01 by the Squads multisig, with a 24 h volume cap of 35 000 USDC; the older `m2m` domain has 100 USDC. Override with `new RufusEscrowClient({ …, domain: "m2m" })` or `RUFUS_ROUTING_DOMAIN`. The domain is bound into the preview digest that the host authorizes, and a preview for a domain that does not exist on the cluster is blocked. Settlement reads the domain stored in each task, so older `m2m` tasks keep working.
+
 ## Integrator commission (affiliate)
 
 The program pays 25% of the 2% fee (50 of 200 bps) to a third party **only** when the creation carries a registered **DirectWallet** `IntegratorConfig` and a token account of its commission wallet. Set the integrator authority in the host:
