@@ -105,9 +105,52 @@ const { runtime: lucid } = await createRufusLucidAgent({ ...cfg, calleeWallet, p
 
 Details, planned targets and the x402 position: [docs/integration-matrix.md](docs/integration-matrix.md). Select is a custom escrow integration, not an x402 scheme.
 
+## Unified helpers
+
+```ts
+// client: your signer, spend policy and authorize() (host approval, never the LLM)
+const job = await client.createTaskEscrow({ amount: "1.5", taskId: "job-42", providerPubkey: PROVIDER, timeoutSeconds: 3600, authorize });
+await client.releaseTaskEscrow({ taskId: "job-42", providerPubkey: PROVIDER, authorize });   // payer approval → executor settles
+await client.refundTaskEscrow({ taskId: "job-42", authorize });                             // signed request, or payer-direct after the deadline
+```
+
+The same `taskId` always maps to the same task address, so a retry cannot charge a second fee.
+
+## Integrator commission (affiliate)
+
+The program pays 25% of the 2% fee (50 of 200 bps) to a third party **only** when the creation carries a registered **DirectWallet** `IntegratorConfig` and a token account of its commission wallet. Set the integrator authority in the host:
+
+- `new RufusEscrowClient({ …, affiliate: "<integrator authority>" })`, or
+- environment `SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY` (checked first) or `RUFUS_AFFILIATE_PUBKEY`.
+
+Before each creation the SDK checks on-chain that the integrator is registered, active and DirectWallet, that its commission token account exists, and that it is not the payer. If any check fails, the whole fee goes to the treasury. There is **no fallback to the payer's key** (that would be self-referral). Agent tools cannot set or change the affiliate.
+
+## escrow-402 (custom HTTP 402 handshake — not x402)
+
+A provider answers `402` with `X-Escrow-Scheme: solana-rufus-v2`, `X-Escrow-Program`, `X-Escrow-Amount` (atomic units), `X-Escrow-Mint`, `X-Escrow-Payee` and `X-Escrow-Timeout`. The client funds an escrow task and retries with `X-Escrow-Task` / `X-Escrow-Tx`. Standard x402 clients do not understand this handshake, and it does not claim x402 conformance.
+
+```ts
+import { escrowFetch, expressEscrow } from "@rufus/agent-adapters";
+app.post("/job", expressEscrow({ chain, terms: { amountRaw: 1_500_000n, mint: USDC, payee: ME, timeoutSecs: 3600 } }), handler); // also honoEscrow
+const { response, escrow } = await escrowFetch(url, { method: "POST", body }, { client, authorize });
+```
+
+- `escrowFetch` pays only within the spend policy (allowed payees, per-task and cumulative caps) and with the host's authorization. The same challenge reuses its task, and a server-suggested affiliate is ignored unless `acceptServerAffiliate: true`.
+- The provider middleware checks the task on-chain: right payee, mint and amount, funded, enough time before the deadline. Each task unlocks **one** request.
+- Payment is released later on the payer's approval, or refunded.
+
+## MCP server (`mcp-server-escrow/`)
+
+A stdio MCP server with the tools `create_escrow_task`, `verify_collateral_websocket`, `release_escrow_task` and `refund_timeout_task`. **It holds no private key.** It returns unsigned transactions, or the exact message the payer must sign. The integrator comes from the server's environment only.
+
+```bash
+cd mcp-server-escrow && npm install --ignore-scripts
+RUFUS_RPC_URL=<rpc> RUFUS_AFFILIATE_PUBKEY=<integrator> MCP_ESCROW_MAX_GROSS_RAW=2050000 npx tsx src/index.ts
+```
+
 ## Tests
 
-`npm test` runs, without network or LLM calls: fee math and rounding thresholds, amount parsing, preview digest and tampering, authorization binding and replay, spend policy, and the three connectors inside their real runtimes. Fee values match the deployed program; the end-to-end suite that replays the approved binary over mainnet state (concurrency, crash recovery, refunds, receipts, webhooks) lives in the main Select repository.
+`npm test` runs, without network or LLM calls, affiliate routing and escrow-402 parsing as well as: fee math and rounding thresholds, amount parsing, preview digest and tampering, authorization binding and replay, spend policy, and the three connectors inside their real runtimes. Fee values match the deployed program; the end-to-end suite that replays the approved binary over mainnet state (concurrency, crash recovery, refunds, receipts, webhooks) lives in the main Select repository.
 
 ## License
 

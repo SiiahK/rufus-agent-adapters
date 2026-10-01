@@ -1,0 +1,19 @@
+{
+  "name": "@rufus/mcp-server-escrow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP (stdio) server for Select v2 Escrow by Select Infrastructure: unsigned create/refund transactions, release message, collateral watch. Holds no keys.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Select Team",
+  "bin": { "rufus-mcp-server-escrow": "src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "zod": "3.25.76"
+  },
+  "engines": { "node": ">=20" }
+}

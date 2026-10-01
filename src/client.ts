@@ -9,19 +9,27 @@
  *
  * There is no approveRelease on-chain instruction: release is executed by the registered executor
  * when the worker verifies the evidence. The adapter never claims more authority than the program grants.
+ *
+ * Unified helpers: createTaskEscrow / releaseTaskEscrow / refundTaskEscrow wrap the steps above with the host's
+ * authorize() callback. The integrator (affiliate) is host configuration only (option or environment, see
+ * affiliate.ts); a creation carries it only when it is a valid DirectWallet integrator, never the payer.
  */
 
 import { createHash } from "node:crypto";
 import bs58 from "bs58";
 import { ComputeBudgetProgram, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
-import { verifyAuthorization, type NonceStore, type SpendAuthorization, type TenantRegistry } from "./authorization.js";
+import { verifyAuthorization, type AuthorizedAction, type NonceStore, type SpendAuthorization, type TenantRegistry } from "./authorization.js";
+import { affiliateFromEnv, resolveAffiliate, type AffiliateRoute } from "./affiliate.js";
 import type { ChainReader, TaskSigner, TxSender } from "./chain.js";
 import { checkSpend, type AgentSpendPolicy, type BudgetTracker, type Cluster } from "./policy.js";
-import { bindingDigest, previewTask, type PreviewInput, type TaskPreview, type WorkerPolicy } from "./preview.js";
+import { bindingDigest, clientOperationId, previewTask, type PreviewInput, type TaskPreview, type WorkerPolicy } from "./preview.js";
 import {
   PROGRAM_ID, TaskStatus, VerificationType, approvalMessage, ata, buildCreateTaskIx, buildPayerRefundIx, buildRegisterIntegratorIx,
-  configPda, decodeProtocolConfig, decodeTask, decodeTombstone, integratorPda, type TaskView, type TombstoneView,
+  configPda, decodeProtocolConfig, decodeTask, decodeTombstone, integratorPda, taskPda, USDC_MINT, type TaskView, type TombstoneView,
 } from "./protocol.js";
+
+/** Host-side approval for the unified helpers (same contract as the connectors' authorize callback). */
+export type HostAuthorize = (req: { action: AuthorizedAction; wallet: string; tenant: string; preview?: TaskPreview; task?: string }) => Promise<SpendAuthorization | null>;
 
 export type ReconciliationState = "reserved" | "signed" | "submitted" | "uncertain" | "finalized" | "failed_final" | "cancelled_before_send";
 
@@ -60,13 +68,20 @@ export interface ClientOptions {
   receipts?: FinalizedSignatureSource;
   confirmPolls?: number;
   pollDelayMs?: number;
+  /** Integrator authority receiving 25% of the fee when valid. undefined → read SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY / RUFUS_AFFILIATE_PUBKEY; null → none. */
+  affiliate?: string | null;
+  /** Tenant used by the unified helpers (default "default"). */
+  tenant?: string;
 }
 
 export class RufusEscrowClient {
   private readonly journal: OperationJournal;
+  /** Affiliate chosen by the host (option or environment); validated on-chain at each creation. */
+  readonly affiliate: string | null;
   constructor(private readonly o: ClientOptions) {
     this.journal = o.journal ?? memoryJournal();
     Object.freeze(this.o.policy);
+    this.affiliate = o.affiliate === undefined ? affiliateFromEnv() : o.affiliate === null ? null : new PublicKey(o.affiliate).toBase58();
   }
 
   /** Cluster time used for every deadline decision (never the local wall clock). */
@@ -88,7 +103,7 @@ export class RufusEscrowClient {
     return previewTask(input, this.o.chain, { workerPolicy: await this.workerPolicy() });
   }
 
-  async createTask(preview: TaskPreview, authorization: SpendAuthorization): Promise<{ task: string; state: ReconciliationState | "already_exists"; signature?: string }> {
+  async createTask(preview: TaskPreview, authorization: SpendAuthorization, opts: { affiliate?: string | null } = {}): Promise<{ task: string; state: ReconciliationState | "already_exists"; signature?: string; commission?: AffiliateRoute }> {
     const { signer, sender } = this.need();
     const b = preview.binding;
     const now = await this.o.chain.now();
@@ -119,19 +134,52 @@ export class RufusEscrowClient {
       this.cancel(b.task, now, "fee changed since preview");
       throw new ClientError("fee_changed", "on-chain fee differs from the preview");
     }
-    const payer = signer.publicKey, mint = new PublicKey(b.mint);
-    const ixs: TransactionInstruction[] = [
-      ComputeBudgetProgram.setComputeUnitLimit({ units: b.computeUnitLimit }),
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: b.priorityFeeMicroLamports }),
-    ];
-    if (!(await this.o.chain.getAccount(integratorPda(payer)))) ixs.push(buildRegisterIntegratorIx(payer, payer));
-    ixs.push(buildCreateTaskIx({
-      payer, callee: new PublicKey(b.callee), mint, grossAmount: gross, deadline: BigInt(b.deadline),
-      clientOperationId: Buffer.from(b.clientOperationId, "hex"), verificationType: b.verificationType,
-      verificationData: Buffer.from(b.verificationData, "hex"), integratorConfig: integratorPda(payer),
-      treasuryTokenAccount: ata(cfg.treasuryAuthority, mint),
-    }));
-    return this.signAndSend(b.task, ixs, now);
+    const { ixs, route } = await buildCreateInstructions(this.o.chain, preview, signer.publicKey, opts.affiliate === undefined ? this.affiliate : opts.affiliate, cfg.treasuryAuthority);
+    return { ...(await this.signAndSend(b.task, ixs, now)), commission: route };
+  }
+
+  // ── unified helpers ──────────────────────────────────────
+
+  /** Task address for a taskId (idempotency key) of this payer and tenant. */
+  taskAddress(taskId: string, tenant = this.o.tenant ?? "default"): string {
+    const { signer } = this.need(false);
+    return taskPda(signer.publicKey, clientOperationId(tenant, signer.publicKey.toBase58(), taskId)).toBase58();
+  }
+
+  /** preview → host authorization → create. `amount` is the gross in decimal units of the mint (default USDC). */
+  async createTaskEscrow(p: {
+    amount: string; taskId: string; providerPubkey: string; timeoutSeconds: number; affiliatePubkey?: string | null;
+    mint?: string; verification?: PreviewInput["verification"]; tenant?: string; authorize: HostAuthorize;
+  }) {
+    const { signer } = this.need();
+    const tenant = p.tenant ?? this.o.tenant ?? "default", wallet = signer.publicKey.toBase58();
+    const preview = await this.previewTask({
+      cluster: this.o.cluster, tenant, payer: wallet, callee: p.providerPubkey, mint: p.mint ?? USDC_MINT.toBase58(), amount: p.amount, amountBasis: "gross",
+      deadlineSecs: p.timeoutSeconds, verification: p.verification ?? { type: "payer_approval" }, idempotencyKey: p.taskId,
+    });
+    const auth = await p.authorize({ action: "create_task", wallet, tenant, preview });
+    if (!auth) throw new ClientError("authorization_required", "the host declined or did not authorize this payment");
+    return { preview, ...(await this.createTask(preview, auth, { affiliate: p.affiliatePubkey })) };
+  }
+
+  /** Payer's release approval for the provider named at creation; the executor settles after verifying it. */
+  async releaseTaskEscrow(p: { taskId: string; providerPubkey: string; tenant?: string; authorize: HostAuthorize }) {
+    const { signer } = this.need(false);
+    const tenant = p.tenant ?? this.o.tenant ?? "default", task = this.taskAddress(p.taskId, tenant);
+    const t = await this.liveTask(task);
+    if (t.calleeAgent.toBase58() !== new PublicKey(p.providerPubkey).toBase58()) throw new ClientError("wrong_provider", "providerPubkey is not the task's callee");
+    const auth = await p.authorize({ action: "submit_evidence", wallet: signer.publicKey.toBase58(), tenant, task });
+    if (!auth) throw new ClientError("authorization_required", "the host declined or did not authorize this release");
+    return { task, ...(await this.submitEvidence({ task, kind: "release_approval", authorization: auth })) };
+  }
+
+  /** Signed refund request before the deadline; payer-direct refund after it. The fee is not refunded. */
+  async refundTaskEscrow(p: { taskId: string; tenant?: string; authorize: HostAuthorize }) {
+    const { signer } = this.need(false);
+    const tenant = p.tenant ?? this.o.tenant ?? "default", task = this.taskAddress(p.taskId, tenant);
+    const auth = await p.authorize({ action: "request_refund", wallet: signer.publicKey.toBase58(), tenant, task });
+    if (!auth) throw new ClientError("authorization_required", "the host declined or did not authorize this refund");
+    return { task, ...(await this.requestRefund({ task, authorization: auth })) };
   }
 
   /** On-chain state and local reconciliation state are reported separately and never merged. */
@@ -297,6 +345,33 @@ export class RufusEscrowClient {
     try { parsed = JSON.parse(text); } catch { /* keep text */ }
     return { accepted: r.status === 202, status: r.status, body: parsed };
   }
+}
+
+/**
+ * Instructions for create_task_v2 from a verified preview. Commission route: a valid third-party DirectWallet
+ * integrator, or the treasury — never the payer. Shared by the client and by servers that return unsigned
+ * transactions (the MCP server), so both build byte-identical instructions.
+ */
+export async function buildCreateInstructions(chain: ChainReader, preview: TaskPreview, payer: PublicKey, affiliate: string | null, treasuryAuthority: PublicKey): Promise<{ ixs: TransactionInstruction[]; route: AffiliateRoute }> {
+  const b = preview.binding, mint = new PublicKey(b.mint);
+  const ixs: TransactionInstruction[] = [
+    ComputeBudgetProgram.setComputeUnitLimit({ units: b.computeUnitLimit }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: b.priorityFeeMicroLamports }),
+  ];
+  const route = await resolveAffiliate(chain, affiliate, payer, mint);
+  let integratorConfig: PublicKey, affiliateTokenAccount: PublicKey | undefined;
+  if (route.kind === "affiliate") { integratorConfig = route.integratorConfig; affiliateTokenAccount = route.affiliateTokenAccount; }
+  else {
+    integratorConfig = integratorPda(payer);
+    if (!(await chain.getAccount(integratorConfig))) ixs.push(buildRegisterIntegratorIx(payer, payer));
+  }
+  ixs.push(buildCreateTaskIx({
+    payer, callee: new PublicKey(b.callee), mint, grossAmount: BigInt(b.grossRaw), deadline: BigInt(b.deadline),
+    clientOperationId: Buffer.from(b.clientOperationId, "hex"), verificationType: b.verificationType,
+    verificationData: Buffer.from(b.verificationData, "hex"), integratorConfig,
+    treasuryTokenAccount: ata(treasuryAuthority, mint), affiliateTokenAccount,
+  }));
+  return { ixs, route };
 }
 
 const bs58sig = (b: Buffer | Uint8Array) => bs58.encode(b);
