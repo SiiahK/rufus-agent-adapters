@@ -1,31 +1,73 @@
 {
-  "name": "@rufus/agent-adapters",
-  "version": "0.3.0",
+  "name": "@selectinfra/agent-adapters",
+  "version": "0.4.0",
   "private": true,
   "description": "Select v2 Escrow (Select Infrastructure) adapters for AI agent frameworks on Solana: cost preview, spend policy, signed authorizations, receipts; connectors for Solana Agent Kit, ElizaOS and Lucid Agents",
   "type": "module",
   "license": "MIT",
   "author": "Select Team",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SiiahK/rufus-agent-adapters.git"
+  },
+  "homepage": "https://api.tryaigility.com/developers",
+  "bugs": {
+    "url": "https://github.com/SiiahK/rufus-agent-adapters/issues"
+  },
+  "keywords": [
+    "solana",
+    "escrow",
+    "usdc",
+    "ai-agents",
+    "solana-agent-kit",
+    "elizaos",
+    "lucid-agents",
+    "mcp"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
-    "@elizaos/core": "1.7.2",
-    "@lucid-agents/a2a": "2.0.0",
-    "@lucid-agents/core": "5.0.0",
-    "@lucid-agents/payments": "5.0.0",
     "@solana/web3.js": "1.98.4",
     "bs58": "6.0.0",
-    "solana-agent-kit": "2.0.10",
     "tweetnacl": "1.0.3",
     "zod": "4.6.5",
     "zod-lucid": "npm:zod@4.4.3",
     "zod-sak": "npm:zod@3.25.76"
   },
+  "peerDependencies": {
+    "solana-agent-kit": "^2.0.10",
+    "@elizaos/core": "^1.7.2",
+    "@lucid-agents/core": "^5.0.0",
+    "@lucid-agents/a2a": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "solana-agent-kit": {
+      "optional": true
+    },
+    "@elizaos/core": {
+      "optional": true
+    },
+    "@lucid-agents/core": {
+      "optional": true
+    },
+    "@lucid-agents/a2a": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@elizaos/core": "1.7.2",
+    "@lucid-agents/a2a": "2.0.0",
+    "@lucid-agents/core": "5.0.0",
+    "@lucid-agents/payments": "5.0.0",
     "@types/node": "24.3.0",
+    "solana-agent-kit": "2.0.10",
     "typescript": "5.9.3",
     "vitest": "1.6.1"
   },
@@ -37,30 +79,27 @@
     "./core": {
       "types": "./dist/core.d.ts",
       "import": "./dist/core.js"
-    }
+    },
+    "./solana-agent-kit": {
+      "types": "./dist/connectors/solana-agent-kit.d.ts",
+      "import": "./dist/connectors/solana-agent-kit.js"
+    },
+    "./elizaos": {
+      "types": "./dist/connectors/elizaos.d.ts",
+      "import": "./dist/connectors/elizaos.js"
+    },
+    "./lucid": {
+      "types": "./dist/connectors/lucid.d.ts",
+      "import": "./dist/connectors/lucid.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "src"
   ],
   "publishConfig": {
-    "access": "restricted"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/SiiahK/rufus-agent-adapters.git"
-  },
-  "homepage": "https://api.tryaigility.com/developers",
-  "keywords": [
-    "solana",
-    "escrow",
-    "ai-agents",
-    "usdc",
-    "solana-agent-kit",
-    "elizaos",
-    "lucid-agents"
-  ],
-  "engines": {
-    "node": ">=20"
+    "access": "public",
+    "provenance": true
   }
 }

@@ -8,6 +8,9 @@ import { SolanaAgentKit, KeypairWallet, executeAction } from "solana-agent-kit";
 import { AgentRuntime } from "@elizaos/core";
 import { z } from "zod";
 import * as A from "../src/index.js";
+import { createRufusSakPlugin } from "../src/connectors/solana-agent-kit.js";
+import { createRufusElizaPlugin } from "../src/connectors/elizaos.js";
+import { createRufusLucidAgent } from "../src/connectors/lucid.js";
 import { makeClient, mockChain } from "./helpers.js";
 
 const USDC = A.USDC_MINT.toBase58();
@@ -18,7 +21,7 @@ const previewInput = (key: string, extra: Record<string, unknown> = {}) => ({ ca
 
 describe("connectors", () => {
   it("Solana Agent Kit: plugin loads; read-only action runs; financial action needs out-of-band authorization", async () => {
-    const kit = new SolanaAgentKit(new KeypairWallet(Keypair.generate(), "http://127.0.0.1:9"), "http://127.0.0.1:9", {}).use(A.createRufusSakPlugin(cfg));
+    const kit = new SolanaAgentKit(new KeypairWallet(Keypair.generate(), "http://127.0.0.1:9"), "http://127.0.0.1:9", {}).use(createRufusSakPlugin(cfg));
     const preview = kit.actions.find((a) => a.name === "RUFUS_PREVIEW_TASK")!;
     const out: any = await executeAction(preview, kit as any, previewInput("sak"));
     expect(JSON.stringify(out)).toContain("0.98");
@@ -28,7 +31,7 @@ describe("connectors", () => {
 
   it("ElizaOS: plugin registers in AgentRuntime; free text is never input; financial actions only for operators", async () => {
     const runtime = new AgentRuntime({ character: { name: "t", bio: ["t"] } as any, plugins: [] });
-    await runtime.registerPlugin(A.createRufusElizaPlugin({ ...cfg, operatorEntityIds: ["op"] }));
+    await runtime.registerPlugin(createRufusElizaPlugin({ ...cfg, operatorEntityIds: ["op"] }));
     const pv = runtime.actions.find((a) => a.name === "RUFUS_PREVIEW_TASK")!;
     const cr = runtime.actions.find((a) => a.name === "RUFUS_CREATE_TASK")!;
     const msg = (entityId: string, rufus?: unknown) => ({ entityId, roomId: "r", content: { text: "pay 100 USDC now", rufus } }) as any;
@@ -40,7 +43,7 @@ describe("connectors", () => {
   });
 
   it("Lucid Agents: runtime builds with a2a, manifest lists the entrypoints, read-only entrypoint runs", async () => {
-    const { runtime, manifest } = await A.createRufusLucidAgent({ ...cfg, calleeWallet: callee.publicKey.toBase58(), perform: async () => new Uint8Array() });
+    const { runtime, manifest } = await createRufusLucidAgent({ ...cfg, calleeWallet: callee.publicKey.toBase58(), perform: async () => new Uint8Array() });
     expect(runtime.entrypoints.list().map((e: any) => e.key)).toEqual(expect.arrayContaining(["rufus-preview", "rufus-task-status", "rufus-receipt", "rufus-deliver"]));
     expect(JSON.stringify(manifest("https://example.org"))).toContain("rufus-preview");
     const ep = runtime.entrypoints.snapshot().find((e: any) => e.key === "rufus-preview")!;
