@@ -1,7 +1,6 @@
 {
   "name": "@selectinfra/agent-adapters",
   "version": "0.4.0",
-  "private": true,
   "description": "Select v2 Escrow (Select Infrastructure) adapters for AI agent frameworks on Solana: cost preview, spend policy, signed authorizations, receipts; connectors for Solana Agent Kit, ElizaOS and Lucid Agents",
   "type": "module",
   "license": "MIT",
@@ -42,10 +41,10 @@
     "zod-sak": "npm:zod@3.25.76"
   },
   "peerDependencies": {
-    "solana-agent-kit": "^2.0.10",
     "@elizaos/core": "^1.7.2",
+    "@lucid-agents/a2a": "^2.0.0",
     "@lucid-agents/core": "^5.0.0",
-    "@lucid-agents/a2a": "^2.0.0"
+    "solana-agent-kit": "^2.0.10"
   },
   "peerDependenciesMeta": {
     "solana-agent-kit": {

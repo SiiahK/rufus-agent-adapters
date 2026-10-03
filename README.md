@@ -8,7 +8,7 @@ TypeScript SDK and agent-framework connectors for **Select v2 Escrow** by Select
 - Developer docs and API: <https://api.tryaigility.com/developers> · [OpenAPI](https://api.tryaigility.com/openapi.json) · [llms.txt](https://api.tryaigility.com/llms.txt)
 - License: MIT
 
-> **Status: pilot.** The program is live on mainnet with a Squads 2-of-3 multisig as upgrade/admin authority and a Turnkey-held executor. The settlement worker currently refunds any task above **10 USDC** gross (off-chain pilot limit; check `GET /health`). There has been **no external security audit**. Version 0.4.0 is prepared for npm but **not published yet**; until then, install from source.
+> **Status: pilot.** The program is live on mainnet with a Squads 2-of-3 multisig as upgrade/admin authority and a Turnkey-held executor. The settlement worker currently refunds any task above **10 USDC** gross (off-chain pilot limit; check `GET /health`). There has been **no external security audit**. Published on npm as `@selectinfra/agent-adapters` (from 0.4.0, with provenance).
 
 ## How the escrow works
 
@@ -41,8 +41,8 @@ Amounts are decimal strings at the API and `bigint` internally — never floats.
 ## Quick start
 
 ```bash
-# once published:  npm install @selectinfra/agent-adapters
-# until then, from source:
+npm install @selectinfra/agent-adapters
+# or from source:
 git clone https://github.com/SiiahK/rufus-agent-adapters.git
 cd rufus-agent-adapters && npm ci && npm test && npm run build   # build emits dist/ for the package exports
 ```
