@@ -47,6 +47,17 @@ describe("affiliate from host configuration", () => {
     const noAta = chainWith([[A.integratorPda(auth), integratorConfig(auth, wallet)]]);
     expect(await A.resolveAffiliate(noAta, auth.toBase58(), payer, USDC)).toMatchObject({ kind: "treasury", reason: expect.stringMatching(/token account/) });
   });
+
+  it("integratorOnboarding: missing config + token account → two instructions; registered → ready; other mode → blocked", async () => {
+    const auth = Keypair.generate().publicKey, wallet = Keypair.generate().publicKey;
+    const fresh = await A.integratorOnboarding(chainWith([]), auth);
+    expect(fresh).toMatchObject({ status: "needs_setup", commissionWallet: auth.toBase58(), integratorConfig: A.integratorPda(auth).toBase58() });
+    expect(fresh.instructions.map((i) => i.programId.toBase58())).toEqual([A.PROGRAM_ID.toBase58(), A.ATA_PROGRAM.toBase58()]);
+    const ready = chainWith([[A.integratorPda(auth), integratorConfig(auth, wallet)], [A.ata(wallet, USDC), Buffer.alloc(165)]]);
+    expect(await A.integratorOnboarding(ready, auth)).toMatchObject({ status: "ready", commissionWallet: wallet.toBase58(), instructions: [] });
+    const other = chainWith([[A.integratorPda(auth), integratorConfig(auth, wallet, 1)]]);
+    expect(await A.integratorOnboarding(other, auth)).toMatchObject({ status: "blocked" });
+  });
 });
 
 describe("escrow-402 (custom handshake, not x402)", () => {

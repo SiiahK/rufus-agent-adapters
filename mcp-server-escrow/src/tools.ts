@@ -10,7 +10,7 @@
 
 import {
   web3, PROGRAM_ID, TaskStatus, VerificationType, approvalMessage, ata, buildCreateInstructions, buildPayerRefundIx, configPda,
-  decodeProtocolConfig, decodeTask, formatAmount, previewTask, resolveRoutingDomain, SETTLEABLE_MINTS, USDC_MINT, type ChainReader,
+  decodeProtocolConfig, decodeTask, decodeTombstone, formatAmount, integratorOnboarding, previewTask, resolveRoutingDomain, SETTLEABLE_MINTS, USDC_MINT, type ChainReader,
 } from "../../src/core.js";
 
 const { PublicKey, Transaction, ComputeBudgetProgram } = web3;
@@ -122,4 +122,39 @@ export async function refundTimeoutTask(d: EscrowToolDeps, i: { task: string }) 
   const tx = new Transaction({ feePayer: t.payer, blockhash: bh.blockhash, lastValidBlockHeight: bh.lastValidBlockHeight }).add(
     ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 5_000 }), buildPayerRefundIx(task, t.payer, ata(t.payer, t.escrowMint)));
   return { task: task.toBase58(), signer: t.payer.toBase58(), unsignedTransactionBase64: unsigned(tx), refundRaw: t.escrowAmount.toString(), feeKeptRaw: (t.protocolFee + t.affiliateFee).toString() };
+}
+
+/** Snapshot of one task: live (amounts, parties, deadline) or closed (tombstone terminal status). Read-only. */
+export async function getTaskStatus(d: EscrowToolDeps, i: { task: string }) {
+  const task = key(i.task, "task"), a = await d.chain.getAccount(task);
+  const receipt = { memo: `rufus://${task.toBase58()}`, url: new URL(`/v2/receipts/${task.toBase58()}`, d.evidenceBaseUrl).toString() };
+  if (!a || !a.owner.equals(PROGRAM_ID)) return { task: task.toBase58(), state: "absent", receipt };
+  try {
+    const t = decodeTask(a.data);
+    return {
+      task: task.toBase58(), state: STATE(t.status), status: TaskStatus[t.status], payer: t.payer.toBase58(), callee: t.calleeAgent.toBase58(), mint: t.escrowMint.toBase58(),
+      verification: t.verificationType === VerificationType.PayerApproval ? "payer_approval" : "artifact_hash", deadline: new Date(Number(t.deadline) * 1000).toISOString(),
+      amountsRaw: { gross: (t.escrowAmount + t.protocolFee + t.affiliateFee).toString(), escrow: t.escrowAmount.toString(), protocolFee: t.protocolFee.toString(), affiliateFee: t.affiliateFee.toString() },
+      receipt,
+    };
+  } catch {
+    try { const tb = decodeTombstone(a.data); return { task: task.toBase58(), state: "terminal", status: tb.terminalStatus, payer: tb.payer.toBase58(), resultHash: tb.resultHash.toString("hex"), closed: true, receipt }; }
+    catch { throw new ToolError("unreadable", "account is neither a task nor a tombstone"); }
+  }
+}
+
+/**
+ * Integrator onboarding: an UNSIGNED transaction (authority = fee payer and signer) that registers a DirectWallet
+ * IntegratorConfig and the commission token account, so hosts that set this authority as their affiliate pay it
+ * 25% of the fee (50 bps) on each task. Never for a payer's own tasks (self-referral is refused at create).
+ */
+export async function registerIntegrator(d: EscrowToolDeps, i: { authority: string; commissionWallet?: string }) {
+  const authority = key(i.authority, "authority"), wallet = i.commissionWallet ? key(i.commissionWallet, "commissionWallet") : authority;
+  const o = await integratorOnboarding(d.chain, authority, wallet);
+  const { instructions, ...view } = o;
+  if (o.status !== "needs_setup") return { ...view, next: o.status === "ready" ? "Already registered. Hosts set SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY to this authority." : "Cannot earn commission with this authority." };
+  const bh = await d.latestBlockhash();
+  const tx = new Transaction({ feePayer: authority, blockhash: bh.blockhash, lastValidBlockHeight: bh.lastValidBlockHeight }).add(...instructions);
+  return { ...view, unsignedTransactionBase64: unsigned(tx), lastValidBlockHeight: bh.lastValidBlockHeight,
+    next: "Sign with the authority wallet and send (rent ≈ 0.0027 SOL). Then hosts set SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY to this authority." };
 }

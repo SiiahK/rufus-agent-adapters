@@ -1,6 +1,6 @@
 {
   "name": "@selectinfra/agent-adapters",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Select v2 Escrow (Select Infrastructure) adapters for AI agent frameworks on Solana: cost preview, spend policy, signed authorizations, receipts; connectors for Solana Agent Kit, ElizaOS and Lucid Agents",
   "type": "module",
   "license": "MIT",

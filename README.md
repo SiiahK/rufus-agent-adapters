@@ -42,9 +42,9 @@ Amounts are decimal strings at the API and `bigint` internally — never floats.
 
 ```bash
 # from GitHub (builds dist/ on install through the `prepare` script; the first install takes a few minutes)
-npm install github:SiiahK/rufus-agent-adapters#v0.4.0
+npm install github:SiiahK/rufus-agent-adapters#v0.4.1
 # or the prebuilt release tarball (faster, no build step)
-npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.0/selectinfra-agent-adapters-0.4.0.tgz
+npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.1/selectinfra-agent-adapters-0.4.1.tgz
 # or from source:
 git clone https://github.com/SiiahK/rufus-agent-adapters.git
 cd rufus-agent-adapters && npm ci && npm test && npm run build   # build emits dist/ for the package exports
@@ -162,16 +162,34 @@ const { response, escrow } = await escrowFetch(url, { method: "POST", body }, { 
 
 ## MCP server (`mcp-server-escrow/`)
 
-A stdio MCP server with the tools `create_escrow_task`, `verify_collateral_websocket`, `release_escrow_task` and `refund_timeout_task`. **It holds no private key.** It returns unsigned transactions, or the exact message the payer must sign. The integrator comes from the server's environment only.
+A stdio MCP server with the tools `create_escrow_task`, `get_task_status`, `verify_collateral_websocket`, `release_escrow_task`, `refund_timeout_task` and `register_integrator`. **It holds no private key.** It returns unsigned transactions, or the exact message the payer must sign. The integrator comes from the server's environment only.
 
 ```bash
 cd mcp-server-escrow && npm install --ignore-scripts
 RUFUS_RPC_URL=<rpc> RUFUS_AFFILIATE_PUBKEY=<integrator> MCP_ESCROW_MAX_GROSS_RAW=10000000 npx tsx src/index.ts
 ```
 
+## Integrators: earn 0.5% of the volume you bring
+
+Agent platforms, frameworks and marketplaces whose users create escrow tasks can earn 25% of the fee (50 bps of gross), paid in USDC atomically inside `create_task_v2`.
+
+```ts
+import { integratorOnboarding } from "@selectinfra/agent-adapters/core";
+const o = await integratorOnboarding(chain, myAuthority);        // optional: commission wallet, mint
+// o.status: "ready" | "needs_setup" | "blocked"; sign o.instructions with myAuthority (rent ≈ 0.0027 SOL)
+```
+
+The MCP tool `register_integrator` returns the same as an unsigned transaction. Then ship your SDK or MCP build with `SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY=<myAuthority>`. A payer never earns on its own tasks.
+
+## Changes in 0.4.1
+
+- `integratorOnboarding()` and `buildCreateAtaIdempotentIx()`: register a DirectWallet integrator and its commission token account.
+- MCP: new tools `register_integrator` (unsigned onboarding transaction) and `get_task_status` (live task or tombstone, plus the `rufus://<task>` receipt).
+- No change to the on-chain program, fees or signing domain.
+
 ## Changes in 0.4.0
 
-- Distributed from GitHub (`npm install github:SiiahK/rufus-agent-adapters#v0.4.0`, or the release tarball); `prepare` builds `dist/` on install.
+- Distributed from GitHub (`npm install github:SiiahK/rufus-agent-adapters#v0.4.1`, or the release tarball); `prepare` builds `dist/` on install.
 - Package name `@selectinfra/agent-adapters` (was `@rufus/agent-adapters`).
 - **Breaking:** the root entry exports only the framework-free core. Import connectors from `/solana-agent-kit`, `/elizaos` or `/lucid`.
 - Solana Agent Kit, ElizaOS and Lucid Agents are optional peer dependencies (tested at the pinned versions above).

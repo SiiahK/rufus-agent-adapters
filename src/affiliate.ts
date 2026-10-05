@@ -15,9 +15,9 @@
  * Agent/tool input never reaches this module; only the host that builds the client chooses the affiliate.
  */
 
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import type { ChainReader } from "./chain.js";
-import { PROGRAM_ID, ata, integratorPda } from "./protocol.js";
+import { ATA_PROGRAM, PROGRAM_ID, TOKEN_PROGRAM, USDC_MINT, ata, buildRegisterIntegratorIx, integratorPda } from "./protocol.js";
 
 export const AFFILIATE_ENV_VARS = ["SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY", "RUFUS_AFFILIATE_PUBKEY"] as const;
 
@@ -63,4 +63,54 @@ export async function resolveAffiliate(chain: ChainReader, authority: string | n
   const tokenAccount = ata(new PublicKey(v.commissionWallet), mint);
   if (!(await chain.getAccount(tokenAccount))) return { kind: "treasury", reason: "affiliate commission token account does not exist for this mint" };
   return { kind: "affiliate", authority: auth.toBase58(), integratorConfig: cfgKey, commissionWallet: v.commissionWallet, affiliateTokenAccount: tokenAccount };
+}
+
+// ── Integrator onboarding (the integrator's own side) ───────
+
+/** create_associated_token_account_idempotent: a no-op when the account already exists. */
+export function buildCreateAtaIdempotentIx(funder: PublicKey, owner: PublicKey, mint: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: ATA_PROGRAM,
+    keys: [
+      { pubkey: funder, isSigner: true, isWritable: true },
+      { pubkey: ata(owner, mint), isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from([1]),
+  });
+}
+
+export interface IntegratorOnboarding {
+  authority: string; integratorConfig: string; commissionWallet: string; commissionTokenAccount: string;
+  /** ready: hosts can set this authority as their affiliate now; needs_setup: sign `instructions` first; blocked: cannot earn (see reason). */
+  status: "ready" | "needs_setup" | "blocked";
+  reason?: string;
+  /** Signed by the authority (who also pays rent ≈ 0.00118 SOL for the config, ≈ 0.00149 SOL for a new token account). */
+  instructions: TransactionInstruction[];
+}
+
+/**
+ * What an integrator (agent platform, framework, marketplace) needs on-chain to earn 25% of the fee (50 bps)
+ * on the tasks its users create: a DirectWallet IntegratorConfig (PDA "integrator_v1" + authority) and a token
+ * account of its commission wallet for the task mint. Read-only; returns the missing instructions.
+ * The IntegratorConfig is init-once: an existing one keeps its commission wallet and mode.
+ */
+export async function integratorOnboarding(chain: ChainReader, authority: PublicKey, commissionWallet: PublicKey = authority, mint: PublicKey = USDC_MINT): Promise<IntegratorOnboarding> {
+  const cfgKey = integratorPda(authority), acct = await chain.getAccount(cfgKey);
+  const ixs: TransactionInstruction[] = [];
+  let wallet = commissionWallet;
+  if (acct) {
+    if (!acct.owner.equals(PROGRAM_ID)) throw new Error("integrator PDA is not owned by the program");
+    const v = decodeIntegratorConfig(acct.data);
+    wallet = new PublicKey(v.commissionWallet);
+    const base = { authority: authority.toBase58(), integratorConfig: cfgKey.toBase58(), commissionWallet: v.commissionWallet, commissionTokenAccount: ata(wallet, mint).toBase58(), instructions: [] };
+    if (!v.active) return { ...base, status: "blocked", reason: "IntegratorConfig is inactive" };
+    if (v.referralMode !== 0) return { ...base, status: "blocked", reason: "IntegratorConfig is not DirectWallet (init-once: use another authority)" };
+  } else ixs.push(buildRegisterIntegratorIx(authority, wallet));
+  const tokenAccount = ata(wallet, mint);
+  if (!(await chain.getAccount(tokenAccount))) ixs.push(buildCreateAtaIdempotentIx(authority, wallet, mint));
+  return { authority: authority.toBase58(), integratorConfig: cfgKey.toBase58(), commissionWallet: wallet.toBase58(), commissionTokenAccount: tokenAccount.toBase58(), status: ixs.length ? "needs_setup" : "ready", instructions: ixs };
 }

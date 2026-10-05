@@ -5,15 +5,18 @@
  *   RUFUS_RPC_URL=<rpc> [RUFUS_CLUSTER=mainnet-beta] [RUFUS_EVIDENCE_URL=https://api.tryaigility.com]
  *   [MCP_ESCROW_MAX_GROSS_RAW=2050000] [SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY=<integrator>] npx tsx src/index.ts
  *
- * Tools: create_escrow_task, verify_collateral_websocket, release_escrow_task, refund_timeout_task.
+ * Tools: create_escrow_task, get_task_status, verify_collateral_websocket, release_escrow_task, refund_timeout_task,
+ * register_integrator.
  * No private key is loaded; financial tools return unsigned transactions or the message to sign.
  */
 
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { web3, affiliateFromEnv, connectionReader } from "../../src/core.js";
-import { createEscrowTask, refundTimeoutTask, releaseEscrowTask, verifyCollateral, ToolError, type EscrowToolDeps } from "./tools.js";
+import { createEscrowTask, getTaskStatus, refundTimeoutTask, registerIntegrator, releaseEscrowTask, verifyCollateral, ToolError, type EscrowToolDeps } from "./tools.js";
 
 const KEY = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
 
@@ -28,6 +31,14 @@ export function buildServer(d: EscrowToolDeps) {
     inputSchema: { payer: KEY, providerPubkey: KEY, amountRaw: z.string().regex(/^[1-9][0-9]{0,19}$/), taskId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/), timeoutSeconds: z.number().int().min(60).max(2_592_000) },
     annotations: { readOnlyHint: true, destructiveHint: false },
   }, wrap((i) => createEscrowTask(d, i)));
+  server.registerTool("get_task_status", {
+    description: "Read one escrow task: live (status, parties, amounts, deadline) or closed (terminal status, result hash), plus its receipt (rufus://<task> memo and /v2/receipts URL). Read-only.",
+    inputSchema: { task: KEY }, annotations: { readOnlyHint: true },
+  }, wrap((i) => getTaskStatus(d, i)));
+  server.registerTool("register_integrator", {
+    description: "For agent platforms that embed Select escrow: build an UNSIGNED transaction registering a DirectWallet integrator (PDA integrator_v1) and its USDC commission account. Hosts that then set this authority as their affiliate pay it 25% of the fee (50 bps) on every task their users create; never on the payer's own tasks.",
+    inputSchema: { authority: KEY, commissionWallet: KEY.optional() }, annotations: { readOnlyHint: true },
+  }, wrap((i) => registerIntegrator(d, i)));
   server.registerTool("verify_collateral_websocket", {
     description: "Wait (websocket account subscription) until an escrow task is funded or terminal, up to 120 s. Read-only.",
     inputSchema: { task: KEY, until: z.enum(["funded", "terminal"]).optional(), timeoutSeconds: z.number().int().min(1).max(120).optional(), payee: KEY.optional(), minGrossRaw: z.string().regex(/^[0-9]{1,20}$/).optional() },
@@ -59,4 +70,4 @@ async function main() {
   await buildServer(d).connect(new StdioServerTransport());
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { console.error(`[mcp-server-escrow] ${e.message}`); process.exit(1); });
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) main().catch((e) => { console.error(`[mcp-server-escrow] ${e.message}`); process.exit(1); });
