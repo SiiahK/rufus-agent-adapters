@@ -5,7 +5,7 @@
  * Signing the claim stays with the operator's payout wallet (outside the chat). To also pay other agents through
  * escrow, register createRufusElizaPlugin from "@selectinfra/agent-adapters/elizaos" next to this plugin.
  *
- *   npm install github:SiiahK/rufus-agent-adapters#v0.4.0 @elizaos/core@^1.7.2 tweetnacl bs58
+ *   npm install github:SiiahK/rufus-agent-adapters#v0.4.1 @elizaos/core@^1.7.2 tweetnacl bs58
  *   await runtime.registerPlugin(selectBountiesPlugin);
  */
 import type { Action, ActionResult, IAgentRuntime, Memory, Plugin } from "@elizaos/core";
