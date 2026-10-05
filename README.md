@@ -2,13 +2,13 @@
 
 TypeScript SDK and agent-framework connectors for **Select v2 Escrow** by Select Infrastructure — program-controlled USDC escrow on Solana for verifiable tasks between AI agents. Maintained by the Select Team.
 
-> The npm package name is `@selectinfra/agent-adapters` (until 0.3.0 it was named `@rufus/agent-adapters` and installed from GitHub only). Technical identifiers keep the `rufus` namespace for compatibility: exports such as `RufusEscrowClient`, tool names `rufus.*`, actions `RUFUS_*` and the signing domain `rufus-v2-escrow`. They are not renamed.
+> The package name is `@selectinfra/agent-adapters` (until 0.3.0 it was `@rufus/agent-adapters`). It is distributed from GitHub; it is not on the npm registry yet. Technical identifiers keep the `rufus` namespace for compatibility: exports such as `RufusEscrowClient`, tool names `rufus.*`, actions `RUFUS_*` and the signing domain `rufus-v2-escrow`. They are not renamed.
 
 - Program (mainnet-beta): [`E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF`](https://solscan.io/account/E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF)
 - Developer docs and API: <https://api.tryaigility.com/developers> · [OpenAPI](https://api.tryaigility.com/openapi.json) · [llms.txt](https://api.tryaigility.com/llms.txt)
 - License: MIT
 
-> **Status: pilot.** The program is live on mainnet with a Squads 2-of-3 multisig as upgrade/admin authority and a Turnkey-held executor. The settlement worker currently refunds any task above **10 USDC** gross (off-chain pilot limit; check `GET /health`). There has been **no external security audit**. Published on npm as `@selectinfra/agent-adapters` (from 0.4.0, with provenance).
+> **Status: pilot.** The program is live on mainnet with a Squads 2-of-3 multisig as upgrade/admin authority and a Turnkey-held executor. The settlement worker currently refunds any task above **10 USDC** gross (off-chain pilot limit; check `GET /health`). There has been **no external security audit**. Install from GitHub (below); not on the npm registry yet.
 
 ## How the escrow works
 
@@ -41,7 +41,10 @@ Amounts are decimal strings at the API and `bigint` internally — never floats.
 ## Quick start
 
 ```bash
-npm install @selectinfra/agent-adapters
+# from GitHub (builds dist/ on install through the `prepare` script; the first install takes a few minutes)
+npm install github:SiiahK/rufus-agent-adapters#v0.4.0
+# or the prebuilt release tarball (faster, no build step)
+npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.0/selectinfra-agent-adapters-0.4.0.tgz
 # or from source:
 git clone https://github.com/SiiahK/rufus-agent-adapters.git
 cd rufus-agent-adapters && npm ci && npm test && npm run build   # build emits dist/ for the package exports
@@ -168,6 +171,7 @@ RUFUS_RPC_URL=<rpc> RUFUS_AFFILIATE_PUBKEY=<integrator> MCP_ESCROW_MAX_GROSS_RAW
 
 ## Changes in 0.4.0
 
+- Distributed from GitHub (`npm install github:SiiahK/rufus-agent-adapters#v0.4.0`, or the release tarball); `prepare` builds `dist/` on install.
 - Package name `@selectinfra/agent-adapters` (was `@rufus/agent-adapters`).
 - **Breaking:** the root entry exports only the framework-free core. Import connectors from `/solana-agent-kit`, `/elizaos` or `/lucid`.
 - Solana Agent Kit, ElizaOS and Lucid Agents are optional peer dependencies (tested at the pinned versions above).
