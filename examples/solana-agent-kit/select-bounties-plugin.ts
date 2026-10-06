@@ -6,7 +6,7 @@
  * To also pay other agents through escrow: agent.use(createRufusSakPlugin(cfg)) from
  * "@selectinfra/agent-adapters/solana-agent-kit" (its spending never uses the kit wallet).
  *
- *   npm install github:SiiahK/rufus-agent-adapters#v0.4.1 solana-agent-kit@^2.0.10 zod@3 tweetnacl bs58
+ *   npm install github:SiiahK/rufus-agent-adapters#v0.4.2 solana-agent-kit@^2.0.10 zod@3 tweetnacl bs58
  *   const agent = new SolanaAgentKit(wallet, rpcUrl, {}).use(selectBountiesPlugin);
  *   await agent.methods.select_claim_bounty(agent, { item: 7, project: "my-agent" });
  */

@@ -40,6 +40,8 @@ export function keypairSigner(kp: Keypair): TaskSigner {
   };
 }
 
+const CLOCK_SYSVAR = new PublicKey("SysvarC1ock11111111111111111111111111111111");
+
 export function connectionReader(conn: Connection): ChainReader {
   return {
     async getAccount(address) {
@@ -47,9 +49,13 @@ export function connectionReader(conn: Connection): ChainReader {
       return a ? { data: a.data, owner: a.owner, lamports: BigInt(a.lamports) } : null;
     },
     minimumBalance: async (size) => BigInt(await conn.getMinimumBalanceForRentExemption(size)),
+    /** Cluster time from the Clock sysvar (unix_timestamp at offset 32), the clock the program uses for deadlines.
+     *  getBlockTime(latest slot) is only a fallback: some RPCs have not stored the newest block yet. */
     now: async () => {
+      const clock = await conn.getAccountInfo(CLOCK_SYSVAR, "confirmed");
+      if (clock && clock.data.length >= 40) return Number(clock.data.readBigInt64LE(32));
       const slot = await conn.getSlot("confirmed");
-      return (await conn.getBlockTime(slot)) ?? Math.floor(Date.now() / 1000);
+      return (await conn.getBlockTime(slot).catch(() => null)) ?? Math.floor(Date.now() / 1000);
     },
   };
 }

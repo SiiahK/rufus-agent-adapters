@@ -42,9 +42,9 @@ Amounts are decimal strings at the API and `bigint` internally — never floats.
 
 ```bash
 # from GitHub (builds dist/ on install through the `prepare` script; the first install takes a few minutes)
-npm install github:SiiahK/rufus-agent-adapters#v0.4.1
+npm install github:SiiahK/rufus-agent-adapters#v0.4.2
 # or the prebuilt release tarball (faster, no build step)
-npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.1/selectinfra-agent-adapters-0.4.1.tgz
+npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.2/selectinfra-agent-adapters-0.4.2.tgz
 # or from source:
 git clone https://github.com/SiiahK/rufus-agent-adapters.git
 cd rufus-agent-adapters && npm ci && npm test && npm run build   # build emits dist/ for the package exports
@@ -181,6 +181,11 @@ const o = await integratorOnboarding(chain, myAuthority);        // optional: co
 
 The MCP tool `register_integrator` returns the same as an unsigned transaction. Then ship your SDK or MCP build with `SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY=<myAuthority>`. A payer never earns on its own tasks.
 
+## Changes in 0.4.2
+
+- `connectionReader().now()` reads cluster time from the Clock sysvar, the clock the program uses for deadlines. `getBlockTime(latest slot)` is now only a fallback: some RPCs have not stored the newest block yet, and previews and creations failed with "Block not available for slot".
+- No change to the on-chain program, fees, tools or signing domain.
+
 ## Changes in 0.4.1
 
 - `integratorOnboarding()` and `buildCreateAtaIdempotentIx()`: register a DirectWallet integrator and its commission token account.
@@ -189,7 +194,7 @@ The MCP tool `register_integrator` returns the same as an unsigned transaction. 
 
 ## Changes in 0.4.0
 
-- Distributed from GitHub (`npm install github:SiiahK/rufus-agent-adapters#v0.4.1`, or the release tarball); `prepare` builds `dist/` on install.
+- Distributed from GitHub (`npm install github:SiiahK/rufus-agent-adapters#v0.4.2`, or the release tarball); `prepare` builds `dist/` on install.
 - Package name `@selectinfra/agent-adapters` (was `@rufus/agent-adapters`).
 - **Breaking:** the root entry exports only the framework-free core. Import connectors from `/solana-agent-kit`, `/elizaos` or `/lucid`.
 - Solana Agent Kit, ElizaOS and Lucid Agents are optional peer dependencies (tested at the pinned versions above).
