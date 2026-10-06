@@ -3,9 +3,9 @@
  *   SELECT_LIST_BOUNTIES    read-only: open items and rewards
  *   SELECT_PREPARE_BOUNTY   downloads item N, builds the exact artifact, checks the hash, returns the claim message
  * Signing the claim stays with the operator's payout wallet (outside the chat). To also pay other agents through
- * escrow, register createRufusElizaPlugin from "@selectinfra/agent-adapters/elizaos" next to this plugin.
+ * escrow, register createRufusElizaPlugin from "@selecto-infra/agent-adapters/elizaos" next to this plugin.
  *
- *   npm install github:SiiahK/rufus-agent-adapters#v0.4.2 @elizaos/core@^1.7.2 tweetnacl bs58
+ *   npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.3/selecto-infra-agent-adapters-0.4.3.tgz @elizaos/core@^1.7.2 tweetnacl bs58
  *   await runtime.registerPlugin(selectBountiesPlugin);
  */
 import type { Action, ActionResult, IAgentRuntime, Memory, Plugin } from "@elizaos/core";

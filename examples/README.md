@@ -51,11 +51,11 @@ const r = await agent.methods.select_claim_bounty(agent, { item: 7, project: "my
 ## Paying other agents through escrow (the SDK)
 
 ```bash
-npm install github:SiiahK/rufus-agent-adapters#v0.4.2      # or the release tarball (see the main README)
+npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.3/selecto-infra-agent-adapters-0.4.3.tgz
 ```
 
-- `@selectinfra/agent-adapters/solana-agent-kit` → `createRufusSakPlugin`
-- `@selectinfra/agent-adapters/elizaos` → `createRufusElizaPlugin`
-- `@selectinfra/agent-adapters/core` → `RufusEscrowClient`
+- `@selecto-infra/agent-adapters/solana-agent-kit` → `createRufusSakPlugin`
+- `@selecto-infra/agent-adapters/elizaos` → `createRufusElizaPlugin`
+- `@selecto-infra/agent-adapters/core` → `RufusEscrowClient`
 
 The fee is 2% of each task, taken at creation, and is not refunded. Pilot limit: 10 USDC per task. No external audit yet.

@@ -1,8 +1,8 @@
-# @selectinfra/agent-adapters
+# @selecto-infra/agent-adapters
 
 TypeScript SDK and agent-framework connectors for **Select v2 Escrow** by Select Infrastructure — program-controlled USDC escrow on Solana for verifiable tasks between AI agents. Maintained by the Select Team.
 
-> The package name is `@selectinfra/agent-adapters` (until 0.3.0 it was `@rufus/agent-adapters`). It is distributed from GitHub; it is not on the npm registry yet. Technical identifiers keep the `rufus` namespace for compatibility: exports such as `RufusEscrowClient`, tool names `rufus.*`, actions `RUFUS_*` and the signing domain `rufus-v2-escrow`. They are not renamed.
+> The package name is `@selecto-infra/agent-adapters` (until 0.3.0 it was `@rufus/agent-adapters`). It is distributed from GitHub; it is not on the npm registry yet. Technical identifiers keep the `rufus` namespace for compatibility: exports such as `RufusEscrowClient`, tool names `rufus.*`, actions `RUFUS_*` and the signing domain `rufus-v2-escrow`. They are not renamed.
 
 - Program (mainnet-beta): [`E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF`](https://solscan.io/account/E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF)
 - Developer docs and API: <https://api.tryaigility.com/developers> · [OpenAPI](https://api.tryaigility.com/openapi.json) · [llms.txt](https://api.tryaigility.com/llms.txt)
@@ -41,10 +41,10 @@ Amounts are decimal strings at the API and `bigint` internally — never floats.
 ## Quick start
 
 ```bash
-# from GitHub (builds dist/ on install through the `prepare` script; the first install takes a few minutes)
-npm install github:SiiahK/rufus-agent-adapters#v0.4.2
-# or the prebuilt release tarball (faster, no build step)
-npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.2/selectinfra-agent-adapters-0.4.2.tgz
+# prebuilt release tarball (no build step)
+npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.3/selecto-infra-agent-adapters-0.4.3.tgz
+# or from the tag (builds dist/ on install through the `prepare` script)
+npm install github:SiiahK/rufus-agent-adapters#v0.4.3
 # or from source:
 git clone https://github.com/SiiahK/rufus-agent-adapters.git
 cd rufus-agent-adapters && npm ci && npm test && npm run build   # build emits dist/ for the package exports
@@ -57,7 +57,7 @@ import { Connection, Keypair } from "@solana/web3.js";
 import {
   RufusEscrowClient, connectionReader, connectionSender, keypairSigner, loadPolicy,
   memoryBudgetTracker, memoryNonceStore, signAuthorization, USDC_MINT, PROGRAM_ID,
-} from "@selectinfra/agent-adapters/core";
+} from "@selecto-infra/agent-adapters/core";
 
 const conn = new Connection(process.env.RPC_URL!, "confirmed");
 const client = new RufusEscrowClient({
@@ -104,9 +104,9 @@ npm install @lucid-agents/core@5.0.0 @lucid-agents/a2a@2.0.0 # for ./lucid
 All connectors share the same tools (`rufus.preview_task`, `rufus.create_task`, `rufus.get_task`, `rufus.get_receipt`, `rufus.request_refund`, `rufus.submit_evidence`) with strict schemas. Financial tools call your `authorize()` callback — a human or principal approval outside the agent; returning `null` means nothing is signed.
 
 ```ts
-import { createRufusSakPlugin } from "@selectinfra/agent-adapters/solana-agent-kit";
-import { createRufusElizaPlugin } from "@selectinfra/agent-adapters/elizaos";
-import { createRufusLucidAgent } from "@selectinfra/agent-adapters/lucid";
+import { createRufusSakPlugin } from "@selecto-infra/agent-adapters/solana-agent-kit";
+import { createRufusElizaPlugin } from "@selecto-infra/agent-adapters/elizaos";
+import { createRufusLucidAgent } from "@selecto-infra/agent-adapters/lucid";
 const cfg = { client, tenant: "acme", cluster: "mainnet-beta", wallet: payer.publicKey.toBase58(), authorize: async (req) => askApprover(req) };
 
 agent.use(createRufusSakPlugin(cfg));                                              // Solana Agent Kit 2.0.10
@@ -151,7 +151,7 @@ Before each creation the SDK checks on-chain that the integrator is registered, 
 A provider answers `402` with `X-Escrow-Scheme: solana-rufus-v2`, `X-Escrow-Program`, `X-Escrow-Amount` (atomic units), `X-Escrow-Mint`, `X-Escrow-Payee` and `X-Escrow-Timeout`. The client funds an escrow task and retries with `X-Escrow-Task` / `X-Escrow-Tx`. Standard x402 clients do not understand this handshake, and it does not claim x402 conformance.
 
 ```ts
-import { escrowFetch, expressEscrow } from "@selectinfra/agent-adapters";
+import { escrowFetch, expressEscrow } from "@selecto-infra/agent-adapters";
 app.post("/job", expressEscrow({ chain, terms: { amountRaw: 1_500_000n, mint: USDC, payee: ME, timeoutSecs: 3600 } }), handler); // also honoEscrow
 const { response, escrow } = await escrowFetch(url, { method: "POST", body }, { client, authorize });
 ```
@@ -174,12 +174,17 @@ RUFUS_RPC_URL=<rpc> RUFUS_AFFILIATE_PUBKEY=<integrator> MCP_ESCROW_MAX_GROSS_RAW
 Agent platforms, frameworks and marketplaces whose users create escrow tasks can earn 25% of the fee (50 bps of gross), paid in USDC atomically inside `create_task_v2`.
 
 ```ts
-import { integratorOnboarding } from "@selectinfra/agent-adapters/core";
+import { integratorOnboarding } from "@selecto-infra/agent-adapters/core";
 const o = await integratorOnboarding(chain, myAuthority);        // optional: commission wallet, mint
 // o.status: "ready" | "needs_setup" | "blocked"; sign o.instructions with myAuthority (rent ≈ 0.0027 SOL)
 ```
 
 The MCP tool `register_integrator` returns the same as an unsigned transaction. Then ship your SDK or MCP build with `SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY=<myAuthority>`. A payer never earns on its own tasks.
+
+## Changes in 0.4.3
+
+- **Package renamed to `@selecto-infra/agent-adapters`.** The code is identical to 0.4.2. Update your imports, for example `@selecto-infra/agent-adapters/solana-agent-kit`.
+- Distributed as a GitHub Release asset: `npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.3/selecto-infra-agent-adapters-0.4.3.tgz`. It is not on the npm registry.
 
 ## Changes in 0.4.2
 
@@ -195,7 +200,7 @@ The MCP tool `register_integrator` returns the same as an unsigned transaction. 
 ## Changes in 0.4.0
 
 - Distributed from GitHub (`npm install github:SiiahK/rufus-agent-adapters#v0.4.2`, or the release tarball); `prepare` builds `dist/` on install.
-- Package name `@selectinfra/agent-adapters` (was `@rufus/agent-adapters`).
+- Package name `@selecto-infra/agent-adapters` (was `@rufus/agent-adapters`).
 - **Breaking:** the root entry exports only the framework-free core. Import connectors from `/solana-agent-kit`, `/elizaos` or `/lucid`.
 - Solana Agent Kit, ElizaOS and Lucid Agents are optional peer dependencies (tested at the pinned versions above).
 - No change to the on-chain program, fees, tools or signing domain.
