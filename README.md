@@ -42,9 +42,9 @@ Amounts are decimal strings at the API and `bigint` internally — never floats.
 
 ```bash
 # prebuilt release tarball (no build step)
-npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.3/selecto-infra-agent-adapters-0.4.3.tgz
+npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.5.0/selecto-infra-agent-adapters-0.5.0.tgz
 # or from the tag (builds dist/ on install through the `prepare` script)
-npm install github:SiiahK/rufus-agent-adapters#v0.4.3
+npm install github:SiiahK/rufus-agent-adapters#v0.5.0
 # or from source:
 git clone https://github.com/SiiahK/rufus-agent-adapters.git
 cd rufus-agent-adapters && npm ci && npm test && npm run build   # build emits dist/ for the package exports
@@ -156,9 +156,20 @@ app.post("/job", expressEscrow({ chain, terms: { amountRaw: 1_500_000n, mint: US
 const { response, escrow } = await escrowFetch(url, { method: "POST", body }, { client, authorize });
 ```
 
-- `escrowFetch` pays only within the spend policy (allowed payees, per-task and cumulative caps) and with the host's authorization. The same challenge reuses its task, and a server-suggested affiliate is ignored unless `acceptServerAffiliate: true`.
-- The provider middleware checks the task on-chain: right payee, mint and amount, funded, enough time before the deadline. Each task unlocks **one** request.
-- Payment is released later on the payer's approval, or refunded.
+- `escrowFetch` pays only within the spend policy (allowed payees, per-task and cumulative caps) and with the host's authorization. A server-suggested affiliate is ignored unless `acceptServerAffiliate: true`.
+- **Request binding (0.5.0).** Each task pays for one exact request. `requestDigest()` hashes the method, path and query, body and request id; `boundTaskId(digest, terms)` turns that into the task's idempotency key. The client sends `X-Escrow-Task`, `X-Escrow-Tenant` and `X-Escrow-Request-Digest`. The same request retried reuses its task (no second fee); a different request needs a new task.
+- The provider middleware checks the task on-chain (right payee, mint and amount, funded, enough time before the deadline) and that it was created for this exact request. Each task unlocks **one** request. Binding is on by default; `expressEscrow` needs the raw body (`req.rawBody`, or a Buffer/string body). `requireBinding: false` accepts unbound tasks (pre-0.5.0 clients).
+- **Delivery report.** The provider can sign `deliveryMessage(task, sha256(response), requestDigest)` and post it to `POST /v2/tasks/<task>/delivery`. Payment is then released on the payer's approval, or automatically **30 minutes** after the report if the payer does not dispute it (a signed refund request within that window refunds). Without a report, the payer approves or refunds; after the deadline the payer can refund. `GET /v2/tasks/<task>/settlement` shows the delivery, the release time and any dispute.
+
+### Is escrow worth the fee?
+
+```ts
+import { shouldEscrow } from "@selecto-infra/agent-adapters/core";
+shouldEscrow({ priceRaw: 100_000_000n, failureProbability: 0.05, extraCostRaw: 200_000n });
+// → { useEscrow: true, feeRaw: 2000000n, expectedRecoveryRaw: 5000000n, expectedNetRaw: 2800000n, breakEvenFailureProbability: 0.022 }
+```
+
+Escrow pays off when `p · r · P > F + O`: failure probability × fraction recovered × price, against the 2% fee plus other costs. With a 0.2% failure rate the same purchase does not justify the fee.
 
 ## MCP server (`mcp-server-escrow/`)
 
@@ -180,6 +191,12 @@ const o = await integratorOnboarding(chain, myAuthority);        // optional: co
 ```
 
 The MCP tool `register_integrator` returns the same as an unsigned transaction. Then ship your SDK or MCP build with `SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY=<myAuthority>`. A payer never earns on its own tasks.
+
+## Changes in 0.5.0
+
+- **Breaking (escrow-402):** tasks are bound to the exact request. `escrowFetch` derives the task id from `requestDigest()` and sends `X-Escrow-Tenant` and `X-Escrow-Request-Digest`; `verifyEscrowRequest`, `expressEscrow` and `honoEscrow` refuse a task created for another request, and unbound (pre-0.5.0) tasks unless the provider sets `requireBinding: false`. Express needs the raw body. `challengeTaskId` is deprecated.
+- New: `requestDigest`, `boundTaskId`, `pathAndQueryOf`, `deliveryMessage` (signed delivery report for optimistic release), `shouldEscrow` (expected-value rule), `client.defaultTenant`.
+- No change to the on-chain program, fees, tools or signing domain.
 
 ## Changes in 0.4.3
 
@@ -207,7 +224,7 @@ The MCP tool `register_integrator` returns the same as an unsigned transaction. 
 
 ## Tests
 
-`npm test` runs, without network or LLM calls, affiliate routing and escrow-402 parsing as well as: fee math and rounding thresholds, amount parsing, preview digest and tampering, authorization binding and replay, spend policy, and the three connectors inside their real runtimes. Fee values match the deployed program; the end-to-end suite that replays the approved binary over mainnet state (concurrency, crash recovery, refunds, receipts, webhooks) lives in the main Select repository.
+`npm test` runs, without network or LLM calls, affiliate routing, escrow-402 parsing, request binding, the delivery message and `shouldEscrow`, as well as: fee math and rounding thresholds, amount parsing, preview digest and tampering, authorization binding and replay, spend policy, and the three connectors inside their real runtimes. Fee values match the deployed program; the end-to-end suite that replays the approved binary over mainnet state (concurrency, crash recovery, refunds, receipts, webhooks) lives in the main Select repository.
 
 ## License
 

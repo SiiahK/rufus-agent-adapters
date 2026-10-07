@@ -51,7 +51,7 @@ const r = await agent.methods.select_claim_bounty(agent, { item: 7, project: "my
 ## Paying other agents through escrow (the SDK)
 
 ```bash
-npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.4.3/selecto-infra-agent-adapters-0.4.3.tgz
+npm install https://github.com/SiiahK/rufus-agent-adapters/releases/download/v0.5.0/selecto-infra-agent-adapters-0.5.0.tgz
 ```
 
 - `@selecto-infra/agent-adapters/solana-agent-kit` → `createRufusSakPlugin`

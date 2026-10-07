@@ -146,6 +146,9 @@ export class RufusEscrowClient {
   // ── unified helpers ──────────────────────────────────────
 
   /** Task address for a taskId (idempotency key) of this payer and tenant. */
+  /** Tenant used when a call does not name one. */
+  get defaultTenant(): string { return this.o.tenant ?? "default"; }
+
   taskAddress(taskId: string, tenant = this.o.tenant ?? "default"): string {
     const { signer } = this.need(false);
     return taskPda(signer.publicKey, clientOperationId(tenant, signer.publicKey.toBase58(), taskId)).toBase58();

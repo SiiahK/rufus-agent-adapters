@@ -11,8 +11,15 @@
  *                     X-Escrow-Payee: <provider wallet>     X-Escrow-Timeout: <seconds>
  *                     X-Escrow-Request-Id: <id> (optional)  X-Escrow-Affiliate: <integrator> (optional, ignored by default)
  *   retry request     X-Escrow-Task: <task address>         X-Escrow-Tx: <create signature>
+ *                     X-Escrow-Tenant: <tenant used to derive the task>
+ *
+ * Request binding (since 0.5.0): the task's idempotency key is derived from a digest of the request itself
+ * (method, path+query, SHA-256 of the body, request id) and the terms. The provider recomputes that digest from
+ * the request it actually received and checks that the task's on-chain client_operation_id matches, so a funded
+ * task unlocks exactly one request shape: another body, path or method needs another task.
  */
 
+import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
 import { PROGRAM_ID, USDC_MINT } from "../protocol.js";
 import { U64_MAX } from "../amounts.js";
@@ -62,4 +69,35 @@ export function challengeHeaders(t: EscrowTerms): Record<string, string> {
   if (t.requestId) h["X-Escrow-Request-Id"] = t.requestId;
   if (t.affiliate) h["X-Escrow-Affiliate"] = t.affiliate;
   return h;
+}
+
+export const ESCROW_402_BINDING = "select-escrow402-request-v1";
+
+export interface BoundRequest {
+  method: string;
+  /** Path and query as sent, e.g. "/v1/report?id=7". The host is excluded (it differs behind proxies). */
+  pathAndQuery: string;
+  body?: Uint8Array | string | null;
+  requestId?: string;
+}
+
+const bodyBytes = (b: BoundRequest["body"]) => (b == null ? new Uint8Array() : typeof b === "string" ? new TextEncoder().encode(b) : b);
+
+/** Canonical digest of one request (JSON array with fixed field order, body hashed separately). */
+export function requestDigest(r: BoundRequest): string {
+  const bodyHash = createHash("sha256").update(bodyBytes(r.body)).digest("hex");
+  return createHash("sha256").update(JSON.stringify([ESCROW_402_BINDING, r.method.toUpperCase(), r.pathAndQuery, bodyHash, r.requestId ?? null])).digest("hex");
+}
+
+/** Idempotency key of the task that pays for exactly this request under these terms. */
+export function boundTaskId(digest: string, t: Pick<EscrowTerms, "payee" | "mint" | "amountRaw" | "timeoutSecs">): string {
+  if (!/^[0-9a-f]{64}$/.test(digest)) throw new Escrow402Error("bad_digest", "request digest must be 64 hex characters");
+  const h = createHash("sha256").update(JSON.stringify([digest, t.payee, t.mint, t.amountRaw.toString(), t.timeoutSecs])).digest("hex");
+  return `e402b:${h.slice(0, 48)}`;
+}
+
+/** "/path?query" of a URL string (absolute or relative). */
+export function pathAndQueryOf(url: string): string {
+  const u = new URL(url, "http://binding.invalid");
+  return `${u.pathname}${u.search}`;
 }

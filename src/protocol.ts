@@ -128,6 +128,14 @@ export function approvalMessage(action: ApprovalAction, task: PublicKey): Buffer
   return Buffer.from(`rufus-v2:${action}:${PROGRAM_ID.toBase58()}:${task.toBase58()}`, "utf-8");
 }
 
+/**
+ * Message the callee (provider) signs to report a delivery: the SHA-256 of the response it served and the
+ * digest of the request it answered. Recorded by the evidence intake; the basis of optimistic release.
+ */
+export function deliveryMessage(task: PublicKey, responseSha256: string, requestDigest: string): Buffer {
+  return Buffer.from(`rufus-v2:delivery:${PROGRAM_ID.toBase58()}:${task.toBase58()}:${responseSha256}:${requestDigest}`, "utf-8");
+}
+
 // ── Instructions ────────────────────────────────────────────
 
 /** register_integrator(referral_mode=0, commission_wallet). Without an affiliate ATA at create, the whole fee goes to the treasury. */

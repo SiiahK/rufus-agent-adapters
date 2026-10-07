@@ -11,3 +11,4 @@ export { rufusTools, runTool, jsonSafe, type ToolkitConfig, type RufusToolDef, t
 export { deliverRufusTask } from "./connectors/deliver.js";
 export * as web3 from "@solana/web3.js";
 export * from "./escrow402/index.js";
+export * from "./economics.js";
