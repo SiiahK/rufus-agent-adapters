@@ -1,5 +1,5 @@
 /**
- * escrow-402: a custom HTTP 402 handshake for asynchronous AI tasks paid through Select v2 Escrow.
+ * escrow-402: a custom HTTP 402 handshake for asynchronous AI tasks paid through Select Escrow v2.
  *
  * It is NOT x402 and not x402-conformant: a standard x402 client does not understand these headers, and no
  * x402 payment is accepted or produced. The provider answers 402 with the terms below; the client funds an
@@ -46,7 +46,7 @@ const pk = (v: string, field: string) => { try { return new PublicKey(v).toBase5
 /** Parses a 402 challenge. Returns null when the response is not an escrow-402 challenge for this program. */
 export function parseChallenge(get: HeaderGetter): EscrowTerms | null {
   if (get("x-escrow-scheme") !== ESCROW_402_SCHEME) return null;
-  if (get("x-escrow-program") !== PROGRAM_ID.toBase58()) throw new Escrow402Error("wrong_program", "X-Escrow-Program is not the Select v2 Escrow program");
+  if (get("x-escrow-program") !== PROGRAM_ID.toBase58()) throw new Escrow402Error("wrong_program", "X-Escrow-Program is not the Select Escrow v2 program");
   const amount = get("x-escrow-amount") ?? "";
   if (!/^[1-9][0-9]{0,19}$/.test(amount) || BigInt(amount) > U64_MAX) throw new Escrow402Error("bad_terms", "X-Escrow-Amount must be a positive integer of atomic units");
   const timeout = Number(get("x-escrow-timeout") ?? "");

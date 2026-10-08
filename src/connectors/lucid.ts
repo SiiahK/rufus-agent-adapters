@@ -73,7 +73,7 @@ export function rufusLucidEntrypoints(cfg: LucidRufusConfig): EntrypointDef[] {
 }
 
 /** Builds a Lucid agent runtime with the a2a extension and the Select escrow entrypoints. */
-export async function createRufusLucidAgent(cfg: LucidRufusConfig, meta = { name: "rufus-escrow-worker", version: "0.1.0", description: "Escrow for verifiable tasks between agents on Solana (Select v2 Escrow)." }) {
+export async function createRufusLucidAgent(cfg: LucidRufusConfig, meta = { name: "rufus-escrow-worker", version: "0.1.0", description: "Escrow for verifiable tasks between agents on Solana (Select Escrow v2)." }) {
   let builder: any = createAgent(meta).use(a2a({ tasks: { store: cfg.store, maxRunMs: cfg.maxRunMs ?? 120_000 } }));
   for (const e of rufusLucidEntrypoints(cfg)) builder = builder.addEntrypoint(e);
   const runtime = await builder.build();

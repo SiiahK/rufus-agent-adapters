@@ -52,6 +52,6 @@ const prepareBounty: Action = {
 
 export const selectBountiesPlugin: Plugin = {
   name: "plugin-select-bounties",
-  description: "Find and complete Select bounties: verified CSV→JSON microtasks paid through Select v2 Escrow on Solana.",
+  description: "Find and complete Select bounties: verified CSV→JSON microtasks paid through Select Escrow v2 on Solana.",
   actions: [listBounties, prepareBounty],
 };

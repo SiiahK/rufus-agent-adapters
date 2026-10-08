@@ -60,7 +60,7 @@ export function createRufusElizaPlugin(cfg: ElizaRufusConfig): Plugin {
 
   return {
     name: "plugin-rufus-escrow",
-    description: "Escrow for verifiable tasks between agents on Solana (Select v2 Escrow).",
+    description: "Escrow for verifiable tasks between agents on Solana (Select Escrow v2).",
     actions,
     providers: [policyProvider],
   };

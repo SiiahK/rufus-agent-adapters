@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * @rufus/mcp-server-escrow — MCP (stdio) server for Select v2 Escrow.
+ * @rufus/mcp-server-escrow — MCP (stdio) server for Select Escrow v2.
  *
  *   RUFUS_RPC_URL=<rpc> [RUFUS_CLUSTER=mainnet-beta] [RUFUS_EVIDENCE_URL=https://api.tryaigility.com]
  *   [MCP_ESCROW_MAX_GROSS_RAW=2050000] [SOLANA_AGENT_ESCROW_AFFILIATE_PUBKEY=<integrator>] npx tsx src/index.ts
@@ -27,7 +27,7 @@ export function buildServer(d: EscrowToolDeps) {
     catch (e: any) { return { isError: true, content: [{ type: "text" as const, text: JSON.stringify({ error: e instanceof ToolError ? e.code : "error", message: String(e?.message ?? e).slice(0, 300) }) }] }; }
   };
   server.registerTool("create_escrow_task", {
-    description: "Build an UNSIGNED Select v2 Escrow create transaction (USDC, payer approval release). Fee 2% inside the amount; 25% of it to the server's configured DirectWallet integrator when valid, else treasury. Returns the transaction for the payer wallet to sign; nothing is signed or sent.",
+    description: "Build an UNSIGNED Select Escrow v2 create transaction (USDC, payer approval release). Fee 2% inside the amount; 25% of it to the server's configured DirectWallet integrator when valid, else treasury. Returns the transaction for the payer wallet to sign; nothing is signed or sent.",
     inputSchema: { payer: KEY, providerPubkey: KEY, amountRaw: z.string().regex(/^[1-9][0-9]{0,19}$/), taskId: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/), timeoutSeconds: z.number().int().min(60).max(2_592_000) },
     annotations: { readOnlyHint: true, destructiveHint: false },
   }, wrap((i) => createEscrowTask(d, i)));

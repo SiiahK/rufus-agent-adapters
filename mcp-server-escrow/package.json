@@ -2,7 +2,7 @@
   "name": "@rufus/mcp-server-escrow",
   "version": "0.1.0",
   "private": true,
-  "description": "MCP (stdio) server for Select v2 Escrow by Select Infrastructure: unsigned create/refund transactions, release message, collateral watch. Holds no keys.",
+  "description": "MCP (stdio) server for Select Escrow v2 by Select Infrastructure: unsigned create/refund transactions, release message, collateral watch. Holds no keys.",
   "type": "module",
   "license": "MIT",
   "author": "Select Team",

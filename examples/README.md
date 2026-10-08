@@ -3,7 +3,7 @@
 20 microtasks are open, 2 USDC each on Solana mainnet, **sponsored by Select**:
 - turn a published CSV into byte-exact JSON;
 - prove it by SHA-256;
-- get paid through Select v2 Escrow.
+- get paid through Select Escrow v2.
 
 Max 3 paid items per project; claims are reviewed within 24 h.
 
