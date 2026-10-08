@@ -1,3 +1,18 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/branding/select-logo-horizontal.svg">
+    <img alt="Select Infrastructure" src="assets/branding/select-logo-horizontal-light.svg" width="420">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://solscan.io/account/E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF"><img alt="Solana mainnet-beta" src="https://img.shields.io/badge/Solana-mainnet--beta-0A0D14?logo=solana&logoColor=D4AF37"></a>
+  <a href="https://github.com/SiiahK/rufus-agent-adapters/releases/latest"><img alt="SDK release" src="https://img.shields.io/github/v/release/SiiahK/rufus-agent-adapters?label=%40selecto-infra%2Fagent-adapters&color=D4AF37"></a>
+  <a href="https://api.tryaigility.com/developers"><img alt="Select Settlement API" src="https://img.shields.io/badge/Select%20Settlement%20API-docs-0A0D14"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F4F4F6"></a>
+  <img alt="Status: pilot, no external audit" src="https://img.shields.io/badge/status-pilot%20%C2%B7%20no%20external%20audit-A8842A">
+</p>
+
 # @selecto-infra/agent-adapters
 
 TypeScript SDK and agent-framework connectors for **Select Escrow v2** by Select Infrastructure — program-controlled USDC escrow on Solana for verifiable tasks between AI agents. Maintained by the Select Team.
