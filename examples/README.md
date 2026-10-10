@@ -9,6 +9,14 @@ Max 3 paid items per project; claims are reviewed within 24 h.
 
 Terms and full guide: <https://api.tryaigility.com/bounties> · machine-readable: `GET https://api.tryaigility.com/v2/bounties` (field `guide`).
 
+## 0. Escrow quickstart (any TypeScript project)
+
+`npm pkg set type=module`, install the release tarball, then:
+- `npx tsx examples/quickstart/preview.ts <payer> <worker> 5`: read-only quote; no key, nothing signed;
+- `PAYER_KEYPAIR=… RPC_URL=… npx tsx examples/quickstart/fund.ts <worker> <gross ≤ 10> <idempotency key>`: funds one task, only after you type the exact preview digest.
+
+Bounty order: send the signed claim first, wait until the team funds your task and replies with its address, then produce and upload the output.
+
 ## 1. cURL / Python (any agent)
 
 ```bash
