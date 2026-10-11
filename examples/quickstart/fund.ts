@@ -15,7 +15,7 @@ import { createInterface } from "node:readline/promises";
 import { randomBytes } from "node:crypto";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import {
-  PROGRAM_ID, RufusEscrowClient, USDC_MINT, connectionReader, connectionSender, keypairSigner, loadPolicy, memoryBudgetTracker,
+  PROGRAM_ID, RufusEscrowClient, USDC_MINT, ata, connectionReader, connectionSender, keypairSigner, loadPolicy, memoryBudgetTracker,
   memoryNonceStore, signAuthorization, type SpendAuthorizationPayload,
 } from "@selecto-infra/agent-adapters/core";
 
@@ -31,8 +31,11 @@ const payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(proc
 if (payer.publicKey.equals(worker)) fail("worker is the payer");
 
 const conn = new Connection(process.env.RPC_URL, "confirmed");
+// Ask the RPC to keep re-sending the same signed transaction until it lands or its blockhash expires (idempotent);
+// sent only once, a transaction dropped under load would expire unconfirmed.
+const sender = { ...connectionSender(conn), send: (raw: Buffer | Uint8Array) => conn.sendRawTransaction(raw, { skipPreflight: false, maxRetries: 10 }) };
 const client = new RufusEscrowClient({
-  cluster: "mainnet-beta", chain: connectionReader(conn), sender: connectionSender(conn), signer: keypairSigner(payer), affiliate: null,
+  cluster: "mainnet-beta", chain: connectionReader(conn), sender, signer: keypairSigner(payer), affiliate: null,
   evidenceBaseUrl: "https://api.tryaigility.com", tenant: "quickstart",
   policy: loadPolicy({ version: 1, policyId: "quickstart-fund", cluster: "mainnet-beta", mints: { [USDC_MINT.toBase58()]: { maxGrossPerTaskRaw: "10000000", budgetRaw: "10000000" } },
     allowedCallees: [worker.toBase58()], allowedTools: ["rufus.preview_task", "rufus.create_task", "rufus.get_task", "rufus.request_refund", "rufus.submit_evidence"],
@@ -47,6 +50,12 @@ const preview = await client.previewTask({
   amount: grossArg, amountBasis: "gross", deadlineSecs: 48 * 3600, verification: { type: "payer_approval" }, idempotencyKey: idKey,
 });
 if (preview.blocking.length) fail(`blocked: ${preview.blocking.join("; ")}`);
+// Balances first, so a buyer never approves a task the wallet cannot pay for.
+const needRaw = BigInt(preview.binding.grossRaw);
+const usdcRaw = await conn.getTokenAccountBalance(ata(payer.publicKey, USDC_MINT)).then((b) => BigInt(b.value.amount)).catch(() => 0n);
+const lamports = await conn.getBalance(payer.publicKey);
+if (usdcRaw < needRaw) fail(`wallet ${payer.publicKey.toBase58()} holds ${Number(usdcRaw) / 1e6} USDC; this task needs ${Number(needRaw) / 1e6}: nothing signed`);
+if (lamports < 10_000_000) fail(`wallet ${payer.publicKey.toBase58()} holds ${lamports / 1e9} SOL; keep about 0.01 SOL for rent and fees: nothing signed`);
 console.log(JSON.stringify({ display: preview.display, rent: preview.rent, task: preview.binding.task }, null, 2));
 console.log(`\npreview digest: ${preview.digest}  (expires in 5 minutes)`);
 

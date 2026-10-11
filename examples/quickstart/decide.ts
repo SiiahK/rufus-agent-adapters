@@ -28,8 +28,11 @@ const worker = (() => { try { return new PublicKey(workerArg); } catch { return 
 const payer = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(process.env.PAYER_KEYPAIR, "utf-8"))));
 
 const conn = new Connection(process.env.RPC_URL, "confirmed");
+// Ask the RPC to keep re-sending the same signed transaction until it lands or its blockhash expires (idempotent);
+// sent only once, a transaction dropped under load would expire unconfirmed.
+const sender = { ...connectionSender(conn), send: (raw: Buffer | Uint8Array) => conn.sendRawTransaction(raw, { skipPreflight: false, maxRetries: 10 }) };
 const client = new RufusEscrowClient({
-  cluster: "mainnet-beta", chain: connectionReader(conn), sender: connectionSender(conn), signer: keypairSigner(payer), affiliate: null,
+  cluster: "mainnet-beta", chain: connectionReader(conn), sender, signer: keypairSigner(payer), affiliate: null,
   evidenceBaseUrl: "https://api.tryaigility.com", tenant: "quickstart",
   policy: loadPolicy({ version: 1, policyId: "quickstart-decide", cluster: "mainnet-beta", mints: { [USDC_MINT.toBase58()]: { maxGrossPerTaskRaw: "10000000", budgetRaw: "10000000" } },
     allowedCallees: [worker.toBase58()], allowedTools: ["rufus.get_task", "rufus.request_refund", "rufus.submit_evidence"], minDeadlineSecs: 3600, maxDeadlineSecs: 7 * 86_400 }),
