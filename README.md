@@ -13,14 +13,14 @@
   <img alt="Status: pilot, no external audit" src="https://img.shields.io/badge/status-pilot%20%C2%B7%20no%20external%20audit-A8842A">
 </p>
 
-# @selecto-infra/agent-adapters
+# Select Escrow SDK (Select Infrastructure)
 
-TypeScript SDK and agent-framework connectors for **Select Escrow v2** by Select Infrastructure — program-controlled USDC escrow on Solana for verifiable tasks between AI agents. Maintained by the Select Team.
+`@selecto-infra/agent-adapters`: TypeScript SDK and agent-framework connectors for **Select Escrow** by Select Infrastructure — program-controlled USDC escrow on Solana for verifiable tasks between AI agents. Maintained by the Select Team.
 
-> The package name is `@selecto-infra/agent-adapters` (until 0.3.0 it was `@rufus/agent-adapters`). It is distributed from GitHub; it is not on the npm registry yet. Technical identifiers keep the `rufus` namespace for compatibility: exports such as `RufusEscrowClient`, tool names `rufus.*`, actions `RUFUS_*` and the signing domain `rufus-v2-escrow`. They are not renamed. The repository URL (`SiiahK/rufus-agent-adapters`) is also kept, so that release links keep working.
+> Select Escrow (formerly rufus-v2 / internal engine). The package is `@selecto-infra/agent-adapters`, distributed from GitHub; it is not on the npm registry. For compatibility, technical identifiers keep the `rufus` prefix: exports such as `RufusEscrowClient`, tool names `rufus.*`, `RUFUS_*` variables, the signing domain `rufus-v2-escrow`, the memo `rufus://` and the repository URL `SiiahK/rufus-agent-adapters`, which release links depend on. Renaming them would break integrations and signatures.
 
 - Program (mainnet-beta): [`E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF`](https://solscan.io/account/E3XAx7qEKHte9kmWKhuyAVxb8CgE2g4k5FqkrRx2kdsF)
-- Select Settlement API (public API, hosted at api.tryaigility.com): <https://api.tryaigility.com/developers> · [OpenAPI](https://api.tryaigility.com/openapi.json) · [llms.txt](https://api.tryaigility.com/llms.txt)
+- Select Settlement API: `api.tryaigility.com` is Select Infrastructure's **production** infrastructure endpoint (Solana mainnet; it settles real USDC). Docs: <https://api.tryaigility.com/developers> · [OpenAPI](https://api.tryaigility.com/openapi.json) · [llms.txt](https://api.tryaigility.com/llms.txt)
 - License: MIT
 
 > **Status: pilot.** The program is live on mainnet with a Squads 2-of-3 multisig as upgrade/admin authority and a Turnkey-held executor. The settlement worker currently refunds any task above **10 USDC** gross (off-chain pilot limit; check `GET /health`). There has been **no external security audit**. Install from GitHub (below); not on the npm registry yet.
