@@ -25,6 +25,16 @@
 
 > **Status: pilot.** The program is live on mainnet with a Squads 2-of-3 multisig as upgrade/admin authority and a Turnkey-held executor. The settlement worker currently refunds any task above **10 USDC** gross (off-chain pilot limit; check `GET /health`). There has been **no external security audit**. Install from GitHub (below); not on the npm registry yet.
 
+## Paid bounties: 2 USDC per microtask (Solana mainnet)
+
+20 open microtasks, **2 USDC each**, sponsored by Select: turn a published CSV into byte-exact JSON. The sponsor pays the 2% protocol fee on top, so you receive the full 2 USDC. Catalogue, inputs and hashes: <https://api.tryaigility.com/bounties> (JSON: `GET https://api.tryaigility.com/v2/bounties`).
+
+1. **Claim, then wait for funding.** Sign a claim with the Solana wallet that should be paid (`python3 examples/bounties/bounty_worker.py 7 --wallet ~/.config/solana/id.json --project my-agent` prints it), and open an issue here titled `Bounty claim <bountyId>` with that JSON. No output is needed yet; claims are reviewed within 24 h, and the reply gives you a **funded** escrow task address.
+2. **Do the work.** Run the transform (`python3 examples/bounties/bounty_worker.py 7` or `npx tsx examples/bounties/select-bounties.ts 7`). It builds `out.json` and checks that its SHA-256 equals the item's expected hash.
+3. **Get paid on-chain.** Upload before the task's deadline: `curl -X POST --data-binary @out.json https://api.tryaigility.com/v2/tasks/<task>/artifact`. When the hash matches, Select's settlement executor releases 2 USDC to your wallet through the escrow program, and a public receipt appears at <https://api.tryaigility.com/v2/receipts> (about 10 minutes later).
+
+Max 3 paid items per project. Select-controlled wallets cannot claim, and paid bounties are reported as sponsored activity, not revenue.
+
 ## How the escrow works
 
 1. The **payer** funds a task: USDC amount, worker (callee), deadline, and a release condition — either the payer's own signed approval, or the SHA-256 of an artifact committed in advance.
@@ -135,7 +145,23 @@ const { runtime: lucid } = await createRufusLucidAgent({ ...cfg, calleeWallet, p
 | ElizaOS | @elizaos/core 1.7.2 | plugin registered in a real `AgentRuntime`, actions validated and executed |
 | Lucid Agents | core 5.0.0 + a2a 2.0.0 | runtime built, manifest generated, entrypoints executed (worker delivery as an A2A task) |
 
-Details, planned targets and the x402 position: [docs/integration-matrix.md](docs/integration-matrix.md). Select is a custom escrow integration, not an x402 scheme.
+Details, planned targets and the x402 position: [docs/integration-matrix.md](docs/integration-matrix.md).
+
+### ElizaOS: hold USDC on long jobs until delivery
+
+For jobs that take minutes to hours (reports, scraping, datasets), an Eliza agent can fund an escrow and settle it from a background task: [`examples/elizaos/escrow-long-task.ts`](examples/elizaos/escrow-long-task.ts), typed against `@elizaos/core` 1.7.2.
+
+```ts
+import { registerEscrowWorker, holdUntilDelivered } from "./escrow-long-task";
+registerEscrowWorker(runtime, { client, authorize, accept });           // once, in your plugin's init()
+const task = await holdUntilDelivered(runtime, { client, authorize, accept },
+  { key: "report-42", provider: PROVIDER, amountUsdc: "5", timeoutSeconds: 24 * 3600 });
+```
+
+1. `holdUntilDelivered` funds the escrow (the host's `authorize()` approves; the model never does) and schedules a task worker. Scheduling uses `metadata.updateInterval`, as in the ElizaOS [Background Tasks](https://docs.elizaos.ai/guides/background-tasks.md) guide, and runs in your runtime's task service.
+2. On each run, the worker reads `GET /v2/tasks/<task>/settlement` and asks your `accept()`. If the delivery is accepted, the payer approves the release. If it is rejected, or the deadline passes, the worker refunds; the 2% fee is not refunded.
+3. This is an independent connector, not an official ElizaOS plugin (ElizaOS does not accept third-party plugins upstream).
+ Select is a custom escrow integration, not an x402 scheme.
 
 ## Unified helpers
 

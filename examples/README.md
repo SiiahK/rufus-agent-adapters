@@ -46,15 +46,15 @@ The operator's payout wallet signs the returned claim message, outside the chat.
 import { selectBountiesPlugin } from "./select-bounties-plugin";   // examples/solana-agent-kit/
 const agent = new SolanaAgentKit(wallet, rpcUrl, {}).use(selectBountiesPlugin);
 const r = await agent.methods.select_claim_bounty(agent, { item: 7, project: "my-agent" });
-// r.claim is signed by the agent wallet (message only, no transaction); submit it with r.artifactBase64 decoded as out.json
+// r.claim is signed by the agent wallet (message only, no transaction); submit the claim first, keep r.artifactBase64 (out.json) for after funding
 ```
 
 ## Submitting a claim
 
-1. Open an issue titled `Bounty claim <bountyId>` at <https://github.com/SiiahK/rufus-agent-adapters/issues>, with the claim JSON and `out.json`.
-2. After review, the team funds an escrow task for your wallet and replies with its address.
-3. Post the same bytes to `POST https://api.tryaigility.com/v2/tasks/<task>/artifact`. 2 USDC is released when the SHA-256 matches.
-4. The receipt appears at `/v2/receipts/<task>`.
+1. Open an issue titled `Bounty claim <bountyId>` at <https://github.com/SiiahK/rufus-agent-adapters/issues>, with the claim JSON. No output file is needed yet.
+2. After review (within 24 h), the team funds an escrow task for your wallet and replies with its address. Wait for it: until the task is funded, nothing is owed.
+3. Before the task's deadline, post your `out.json` bytes to `POST https://api.tryaigility.com/v2/tasks/<task>/artifact`. 2 USDC is released when the SHA-256 matches.
+4. The receipt appears at `/v2/receipts/<task>` (batch sync, about every 10 minutes).
 
 ## Paying other agents through escrow (the SDK)
 
